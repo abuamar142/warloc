@@ -14,7 +14,7 @@ class BackupHelper {
     final archive = Archive();
 
     // 1. Add database file
-    final dbPath = p.join(await getDatabasesPath(), 'warloc_chats.db');
+    final dbPath = p.join(await getDatabasesPath(), DatabaseHelper.dbName);
     final dbFile = File(dbPath);
     if (await dbFile.exists()) {
       final dbBytes = await dbFile.readAsBytes();
@@ -62,7 +62,7 @@ class BackupHelper {
       // Close the current database connection
       await DatabaseHelper.instance.close();
 
-      final dbPath = p.join(await getDatabasesPath(), 'warloc_chats.db');
+      final dbPath = p.join(await getDatabasesPath(), DatabaseHelper.dbName);
       final appDir = await getApplicationDocumentsDirectory();
 
       // Delete existing media directory to do a clean overwrite
@@ -75,10 +75,8 @@ class BackupHelper {
       for (final file in archive) {
         final data = file.content as List<int>;
         if (file.name == 'warloc_chats.db') {
+          await deleteDatabase(dbPath);
           final dbFile = File(dbPath);
-          if (await dbFile.exists()) {
-            await dbFile.delete();
-          }
           await dbFile.create(recursive: true);
           await dbFile.writeAsBytes(data);
         } else if (file.name.startsWith('media/')) {
@@ -177,8 +175,17 @@ class BackupHelper {
         );
 
         for (final msgMap in tempMessagesMap) {
-          // Construct message and map it to our new target thread ID
-          final ChatMessage msg = ChatMessage.fromMap(msgMap).copyWith(threadId: targetThreadId);
+          // Construct message without preserving database ID so that target DB autoincrements it.
+          // Map it to our new target thread ID.
+          final ChatMessage msg = ChatMessage(
+            threadId: targetThreadId,
+            timestamp: msgMap['timestamp'] as int,
+            sender: msgMap['sender'] as String,
+            content: msgMap['content'] as String,
+            isSystem: msgMap['isSystem'] as int,
+            mediaPath: msgMap['mediaPath'] as String?,
+            mediaType: msgMap['mediaType'] as String?,
+          );
 
           // Insert if unique
           final insertedId = await dbHelper.insertMessageIfUnique(msg);
