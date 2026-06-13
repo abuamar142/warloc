@@ -5,6 +5,8 @@ class ChatMessage {
   final String sender;
   final String content;
   final int isSystem; // 1 = true, 0 = false
+  final String? mediaPath; // Path relative to media folder (filename)
+  final String? mediaType; // 'image', 'video', 'audio', 'sticker', 'document'
 
   ChatMessage({
     this.id,
@@ -13,9 +15,12 @@ class ChatMessage {
     required this.sender,
     required this.content,
     required this.isSystem,
+    this.mediaPath,
+    this.mediaType,
   });
 
   bool get isSystemMessage => isSystem == 1;
+  bool get hasMedia => mediaPath != null && mediaPath!.isNotEmpty;
 
   Map<String, dynamic> toMap() {
     return {
@@ -25,6 +30,8 @@ class ChatMessage {
       'sender': sender,
       'content': content,
       'isSystem': isSystem,
+      'mediaPath': mediaPath,
+      'mediaType': mediaType,
     };
   }
 
@@ -36,6 +43,8 @@ class ChatMessage {
       sender: map['sender'] as String,
       content: map['content'] as String,
       isSystem: map['isSystem'] as int,
+      mediaPath: map['mediaPath'] as String?,
+      mediaType: map['mediaType'] as String?,
     );
   }
 
@@ -46,6 +55,8 @@ class ChatMessage {
     String? sender,
     String? content,
     int? isSystem,
+    String? mediaPath,
+    String? mediaType,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -54,6 +65,8 @@ class ChatMessage {
       sender: sender ?? this.sender,
       content: content ?? this.content,
       isSystem: isSystem ?? this.isSystem,
+      mediaPath: mediaPath ?? this.mediaPath,
+      mediaType: mediaType ?? this.mediaType,
     );
   }
 }

@@ -7,6 +7,7 @@ class ImportConfigDialog extends StatefulWidget {
   final String filePath;
   final WhatsAppParsedResult parsedData;
   final List<ChatThread> existingThreads;
+  final String? tempDirPath;
   final Function(bool isNew, String name, String meName, ChatThread? existingThread) onConfirm;
 
   const ImportConfigDialog({
@@ -14,6 +15,7 @@ class ImportConfigDialog extends StatefulWidget {
     required this.filePath,
     required this.parsedData,
     required this.existingThreads,
+    this.tempDirPath,
     required this.onConfirm,
   });
 

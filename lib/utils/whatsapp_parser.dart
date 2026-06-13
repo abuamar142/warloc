@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'media_helper.dart';
 
 class WhatsAppParsedResult {
   final List<WhatsAppMessageTemp> messages;
@@ -16,12 +17,16 @@ class WhatsAppMessageTemp {
   final String sender;
   final String content;
   final bool isSystem;
+  final String? mediaPath;
+  final String? mediaType;
 
   WhatsAppMessageTemp({
     required this.timestamp,
     required this.sender,
     required this.content,
     required this.isSystem,
+    this.mediaPath,
+    this.mediaType,
   });
 
   @override
@@ -35,6 +40,16 @@ class WhatsAppParser {
   // e.g. "09/06/2026, 14:32 - " or "9/6/26, 2:32 PM - " or "09/06/2026 14:32 - "
   static final RegExp _lineStartRegex = RegExp(
     r'^(\d{1,2}/\d{1,2}/\d{2,4}),?\s+(\d{1,2}:\d{2}(?:\s?[aApP][mM])?)\s+-\s+(.*)$'
+  );
+
+  // Matches WhatsApp media attachment lines:
+  // e.g. "IMG-20260609-WA0000.jpg (file attached)"
+  // e.g. "STK-20260611-WA0003.webp (file attached)"
+  // e.g. "VID-20260611-WA0008.mp4 (file attached)"
+  // Supports "file attached", "file terlampir", "attached", "terlampir", "<attached>"
+  static final RegExp _mediaAttachmentRegex = RegExp(
+    r'^([\w\-. ]+\.\w{3,4})\s*(\(file attached\)|\(file terlampir\)|\(Attached\)|\(Terlampir\)|\(terlampir\)|\(Attached File\)|<attached>|<attached:.*>)$',
+    caseSensitive: false
   );
 
   static Future<WhatsAppParsedResult> parseFile(String filePath) async {
@@ -87,11 +102,23 @@ class WhatsAppParser {
           
           if (sender.isNotEmpty) {
             senders.add(sender);
+            
+            // Check for media attachment
+            final mediaMatch = _mediaAttachmentRegex.firstMatch(content.trim());
+            String? mediaPath;
+            String? mediaType;
+            if (mediaMatch != null) {
+              mediaPath = mediaMatch.group(1)!.trim();
+              mediaType = MediaHelper.getMediaTypeFromExtension(mediaPath);
+            }
+
             currentMessage = WhatsAppMessageTemp(
               timestamp: timestamp,
               sender: sender,
               content: content,
               isSystem: false,
+              mediaPath: mediaPath,
+              mediaType: mediaType,
             );
           } else {
             // Empty sender means system message
@@ -120,6 +147,8 @@ class WhatsAppParser {
             sender: currentMessage.sender,
             content: '${currentMessage.content}\n$line',
             isSystem: currentMessage.isSystem,
+            mediaPath: currentMessage.mediaPath,
+            mediaType: currentMessage.mediaType,
           );
         } else {
           // Trash line before any valid chat message, skip or make it a system message

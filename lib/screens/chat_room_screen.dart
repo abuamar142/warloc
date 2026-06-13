@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 import '../database/database_helper.dart';
 import '../models/chat_thread.dart';
 import '../models/chat_message.dart';
@@ -19,6 +21,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<ChatMessage> _allMessages = [];
   List<ChatMessage> _filteredMessages = [];
+  String? _mediaDirPath;
   bool _isLoading = true;
   bool _isSearching = false;
 
@@ -40,9 +43,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     final db = DatabaseHelper.instance;
     final messages = await db.getMessagesForThread(widget.thread.id!);
     
+    final appDir = await getApplicationDocumentsDirectory();
+    final mediaDirPath = p.join(appDir.path, 'media', widget.thread.id.toString());
+    
     setState(() {
       _allMessages = messages;
       _filteredMessages = messages;
+      _mediaDirPath = mediaDirPath;
       _isLoading = false;
     });
 
@@ -220,6 +227,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                         return MessageBubble(
                           message: item.message!,
                           meName: widget.thread.meName,
+                          mediaDirPath: _mediaDirPath,
                         );
                       }
                     },

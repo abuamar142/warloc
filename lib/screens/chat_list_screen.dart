@@ -1,9 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 import '../database/database_helper.dart';
 import '../models/chat_thread.dart';
 import '../models/chat_message.dart';
 import '../utils/whatsapp_parser.dart';
+import '../utils/media_helper.dart';
 import '../widgets/chat_thread_tile.dart';
 import '../widgets/import_config_dialog.dart';
 import '../widgets/import_progress_dialog.dart';
@@ -57,12 +61,13 @@ class _ChatListScreenState extends State<ChatListScreen> {
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['txt'],
+        allowedExtensions: ['txt', 'zip'],
       );
 
       if (result == null || result.files.single.path == null) return;
 
       final path = result.files.single.path!;
+      final isZip = path.toLowerCase().endsWith('.zip');
 
       if (!mounted) return;
       // Show loading while parsing
@@ -74,19 +79,43 @@ class _ChatListScreenState extends State<ChatListScreen> {
         ),
       );
 
-      final parsedResult = await WhatsAppParser.parseFile(path);
+      String? targetPathToParse;
+      String? tempDirPath;
+
+      if (isZip) {
+        final tempDir = await getTemporaryDirectory();
+        tempDirPath = p.join(tempDir.path, 'warloc_temp_${DateTime.now().millisecondsSinceEpoch}');
+        final tempDirFile = Directory(tempDirPath);
+        await tempDirFile.create(recursive: true);
+
+        final chatLogPath = await MediaHelper.extractZipAndFindChatLog(path, tempDirFile);
+        if (chatLogPath == null) {
+          if (mounted) Navigator.pop(context); // Dismiss loading
+          await tempDirFile.delete(recursive: true);
+          _showErrorSnackBar("Tidak ada file log chat (.txt) di dalam file zip.");
+          return;
+        }
+        targetPathToParse = chatLogPath;
+      } else {
+        targetPathToParse = path;
+      }
+
+      final parsedResult = await WhatsAppParser.parseFile(targetPathToParse);
 
       if (!mounted) return;
       Navigator.pop(context); // Dismiss parsing loading
 
       if (parsedResult.messages.isEmpty) {
+        if (tempDirPath != null) {
+          await Directory(tempDirPath).delete(recursive: true);
+        }
         _showErrorSnackBar(
           "Tidak ada pesan valid yang ditemukan dalam file ini.",
         );
         return;
       }
 
-      _showImportConfigDialog(path, parsedResult);
+      _showImportConfigDialog(path, parsedResult, tempDirPath: tempDirPath);
     } catch (e) {
       _showErrorSnackBar("Gagal membaca file: $e");
     }
@@ -100,8 +129,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   void _showImportConfigDialog(
     String filePath,
-    WhatsAppParsedResult parsedData,
-  ) {
+    WhatsAppParsedResult parsedData, {
+    String? tempDirPath,
+  }) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -109,8 +139,16 @@ class _ChatListScreenState extends State<ChatListScreen> {
         filePath: filePath,
         parsedData: parsedData,
         existingThreads: _threads,
+        tempDirPath: tempDirPath,
         onConfirm: (isNew, name, meName, existingThread) {
-          _startImportProcess(isNew, name, meName, existingThread, parsedData);
+          _startImportProcess(
+            isNew,
+            name,
+            meName,
+            existingThread,
+            parsedData,
+            tempDirPath: tempDirPath,
+          );
         },
       ),
     );
@@ -121,8 +159,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
     String name,
     String meName,
     ChatThread? existingThread,
-    WhatsAppParsedResult parsedData,
-  ) {
+    WhatsAppParsedResult parsedData, {
+    String? tempDirPath,
+  }) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -132,6 +171,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
         meName: meName,
         existingThread: existingThread,
         parsedData: parsedData,
+        tempDirPath: tempDirPath,
         onComplete: _loadThreads,
       ),
     );
@@ -173,7 +213,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
-          "Warloc",
+          "WhatsApp veRsi LOCal",
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         backgroundColor: const Color(0xFF008069),

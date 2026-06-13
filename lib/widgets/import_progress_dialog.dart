@@ -1,8 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 import '../database/database_helper.dart';
 import '../models/chat_thread.dart';
 import '../models/chat_message.dart';
 import '../utils/whatsapp_parser.dart';
+import '../utils/media_helper.dart';
 
 class ImportProgressDialog extends StatefulWidget {
   final bool isNew;
@@ -10,6 +13,7 @@ class ImportProgressDialog extends StatefulWidget {
   final String meName;
   final ChatThread? existingThread;
   final WhatsAppParsedResult parsedData;
+  final String? tempDirPath;
   final VoidCallback onComplete;
 
   const ImportProgressDialog({
@@ -19,6 +23,7 @@ class ImportProgressDialog extends StatefulWidget {
     required this.meName,
     required this.existingThread,
     required this.parsedData,
+    this.tempDirPath,
     required this.onComplete,
   });
 
@@ -53,6 +58,32 @@ class _ImportProgressDialogState extends State<ImportProgressDialog> {
       }
     }
 
+    // Copy media files if tempDirPath is provided
+    if (widget.tempDirPath != null) {
+      try {
+        final tempDir = Directory(widget.tempDirPath!);
+        if (await tempDir.exists()) {
+          final targetDir = await MediaHelper.getMediaDirectory(threadId);
+          final entities = tempDir.listSync(recursive: true);
+          for (final entity in entities) {
+            if (entity is File) {
+              final fileName = p.basename(entity.path);
+              // Skip chat log files and hidden files
+              if (fileName.toLowerCase().endsWith('.txt') ||
+                  fileName.startsWith('__MACOSX') ||
+                  fileName.startsWith('.')) {
+                continue;
+              }
+              final targetPath = p.join(targetDir.path, fileName);
+              await entity.copy(targetPath);
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint("Gagal menyalin file media: $e");
+      }
+    }
+
     _processNextBatch(threadId);
   }
 
@@ -82,6 +113,8 @@ class _ImportProgressDialogState extends State<ImportProgressDialog> {
           sender: parsedMsg.sender,
           content: parsedMsg.content,
           isSystem: parsedMsg.isSystem ? 1 : 0,
+          mediaPath: parsedMsg.mediaPath,
+          mediaType: parsedMsg.mediaType,
         );
 
         final insertedId = await db.insertMessageIfUnique(chatMsg);
@@ -104,6 +137,18 @@ class _ImportProgressDialogState extends State<ImportProgressDialog> {
   }
 
   void _finishImport() {
+    // Clean up temp directory if it exists
+    if (widget.tempDirPath != null) {
+      try {
+        final tempDir = Directory(widget.tempDirPath!);
+        if (tempDir.existsSync()) {
+          tempDir.deleteSync(recursive: true);
+        }
+      } catch (e) {
+        debugPrint("Gagal menghapus folder temp: $e");
+      }
+    }
+
     Navigator.pop(context); // Close progress dialog
     widget.onComplete();
 

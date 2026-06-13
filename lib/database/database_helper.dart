@@ -22,14 +22,22 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
       onConfigure: _onConfigure,
+      onUpgrade: _onUpgrade,
     );
   }
 
   Future _onConfigure(Database db) async {
     await db.execute('PRAGMA foreign_keys = ON');
+  }
+
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE messages ADD COLUMN mediaPath TEXT');
+      await db.execute('ALTER TABLE messages ADD COLUMN mediaType TEXT');
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -51,6 +59,8 @@ class DatabaseHelper {
         sender TEXT NOT NULL,
         content TEXT NOT NULL,
         isSystem INTEGER NOT NULL,
+        mediaPath TEXT,
+        mediaType TEXT,
         FOREIGN KEY (threadId) REFERENCES threads (id) ON DELETE CASCADE
       )
     ''');
