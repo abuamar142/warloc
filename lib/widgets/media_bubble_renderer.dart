@@ -364,23 +364,24 @@ class AudioPlayerWidget extends StatefulWidget {
 }
 
 class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
-  late final AudioPlayer _player;
+  AudioPlayer? _player;
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
   bool _isPlaying = false;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _player = AudioPlayer();
-    _initAudioPlayer();
   }
 
   Future<void> _initAudioPlayer() async {
+    if (_isInitialized) return;
     try {
-      await _player.setSource(DeviceFileSource(widget.filePath));
+      final player = AudioPlayer();
+      _player = player;
 
-      _player.onDurationChanged.listen((d) {
+      player.onDurationChanged.listen((d) {
         if (mounted) {
           setState(() {
             _duration = d;
@@ -388,7 +389,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
         }
       });
 
-      _player.onPositionChanged.listen((p) {
+      player.onPositionChanged.listen((p) {
         if (mounted) {
           setState(() {
             _position = p;
@@ -396,13 +397,16 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
         }
       });
 
-      _player.onPlayerStateChanged.listen((state) {
+      player.onPlayerStateChanged.listen((state) {
         if (mounted) {
           setState(() {
             _isPlaying = state == PlayerState.playing;
           });
         }
       });
+
+      await player.setSource(DeviceFileSource(widget.filePath));
+      _isInitialized = true;
     } catch (e) {
       debugPrint("Gagal menginisialisasi audio player: $e");
     }
@@ -410,16 +414,22 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
 
   @override
   void dispose() {
-    _player.dispose();
+    _player?.dispose();
     super.dispose();
   }
 
   void _togglePlay() async {
     try {
-      if (_isPlaying) {
-        await _player.pause();
-      } else {
-        await _player.play(DeviceFileSource(widget.filePath));
+      if (!_isInitialized) {
+        await _initAudioPlayer();
+      }
+
+      if (_player != null) {
+        if (_isPlaying) {
+          await _player!.pause();
+        } else {
+          await _player!.play(DeviceFileSource(widget.filePath));
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -520,7 +530,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
                               : 1.0,
                         ),
                     onChanged: (val) {
-                      _player.seek(Duration(milliseconds: val.toInt()));
+                      _player?.seek(Duration(milliseconds: val.toInt()));
                     },
                   ),
                 ),
@@ -532,7 +542,9 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
                       Text(
                         _isPlaying || _position.inMilliseconds > 0
                             ? "${_formatDuration(_position)} / ${_formatDuration(_duration)}"
-                            : (sizeStr.isNotEmpty ? "$sizeStr • ${_formatDuration(_duration)}" : _formatDuration(_duration)),
+                            : (sizeStr.isNotEmpty 
+                                ? (_duration != Duration.zero ? "$sizeStr • ${_formatDuration(_duration)}" : sizeStr)
+                                : _formatDuration(_duration)),
                         style: const TextStyle(fontSize: 10, color: Colors.grey),
                       ),
                       const Icon(
