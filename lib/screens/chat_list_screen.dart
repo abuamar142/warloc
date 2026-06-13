@@ -435,7 +435,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
-          "WhatsApp veRsi LOCal",
+          "Warloc",
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         backgroundColor: const Color(0xFF008069),
