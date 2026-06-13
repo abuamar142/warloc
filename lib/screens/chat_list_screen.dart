@@ -11,6 +11,7 @@ import '../utils/media_helper.dart';
 import '../widgets/chat_thread_tile.dart';
 import '../widgets/import_config_dialog.dart';
 import '../widgets/import_progress_dialog.dart';
+import '../utils/backup_helper.dart';
 import 'chat_room_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
@@ -209,6 +210,181 @@ class _ChatListScreenState extends State<ChatListScreen> {
     }
   }
 
+  Future<void> _exportBackup() async {
+    try {
+      final outputPath = await FilePicker.saveFile(
+        dialogTitle: 'Simpan Cadangan Warloc',
+        fileName: 'warloc_backup_${DateTime.now().millisecondsSinceEpoch}.wlb',
+        type: FileType.custom,
+        allowedExtensions: ['wlb', 'zip'],
+      );
+
+      if (outputPath == null) return;
+
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: Color(0xFF008069)),
+        ),
+      );
+
+      await BackupHelper.createBackup(outputPath);
+
+      if (!mounted) return;
+      Navigator.pop(context); // Dismiss loading dialog
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Cadangan data berhasil diekspor!"),
+          backgroundColor: Color(0xFF008069),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Dismiss loading dialog
+        _showErrorSnackBar("Gagal mengekspor cadangan: $e");
+      }
+    }
+  }
+
+  Future<void> _importBackup() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['wlb', 'zip'],
+      );
+
+      if (result == null || result.files.single.path == null) return;
+      final backupPath = result.files.single.path!;
+
+      if (!mounted) return;
+
+      final importMode = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          String selectedMode = 'merge'; // Default to merge
+          return StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                title: const Row(
+                  children: [
+                    Icon(Icons.restore, color: Color(0xFF008069)),
+                    SizedBox(width: 8),
+                    Text(
+                      "Pilih Mode Impor",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                  ],
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Bagaimana Anda ingin memulihkan cadangan data ini?",
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 16),
+                    ChoiceChip(
+                      label: const Text("Gabung Chat (Rekomendasi)"),
+                      selected: selectedMode == 'merge',
+                      selectedColor: const Color(0x20008069),
+                      checkmarkColor: const Color(0xFF008069),
+                      onSelected: (val) {
+                        setStateDialog(() {
+                          selectedMode = 'merge';
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      "Menggabungkan riwayat chat tanpa menghapus pesan yang ada. Pesan duplikat akan dilewati secara otomatis.",
+                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
+                    ChoiceChip(
+                      label: const Text("Timpa Semua Data"),
+                      selected: selectedMode == 'overwrite',
+                      selectedColor: const Color(0x20008069),
+                      checkmarkColor: const Color(0xFF008069),
+                      onSelected: (val) {
+                        setStateDialog(() {
+                          selectedMode = 'overwrite';
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      "PERINGATAN: Menghapus semua chat dan media saat ini, lalu menggantinya secara total dengan isi cadangan.",
+                      style: TextStyle(fontSize: 11, color: Colors.redAccent),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("Batal", style: TextStyle(color: Colors.grey)),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context, selectedMode),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF008069),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: const Text("Impor"),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+
+      if (importMode == null) return;
+
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: Color(0xFF008069)),
+        ),
+      );
+
+      bool success = false;
+      if (importMode == 'overwrite') {
+        success = await BackupHelper.restoreBackupOverwrite(backupPath);
+      } else {
+        success = await BackupHelper.restoreBackupMerge(backupPath);
+      }
+
+      if (!mounted) return;
+      Navigator.pop(context); // Dismiss loading dialog
+
+      if (success) {
+        _loadThreads();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Cadangan data berhasil dipulihkan!"),
+            backgroundColor: Color(0xFF008069),
+          ),
+        );
+      } else {
+        _showErrorSnackBar("Gagal memulihkan cadangan. Pastikan format file cadangan valid.");
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Dismiss loading dialog
+        _showErrorSnackBar("Gagal mengimpor cadangan: $e");
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -224,6 +400,38 @@ class _ChatListScreenState extends State<ChatListScreen> {
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: _loadThreads,
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            onSelected: (value) {
+              if (value == 'export') {
+                _exportBackup();
+              } else if (value == 'import') {
+                _importBackup();
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'export',
+                child: Row(
+                  children: [
+                    Icon(Icons.backup, color: Color(0xFF008069)),
+                    SizedBox(width: 8),
+                    Text("Ekspor Cadangan (.wlb)"),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'import',
+                child: Row(
+                  children: [
+                    Icon(Icons.restore, color: Color(0xFF008069)),
+                    SizedBox(width: 8),
+                    Text("Impor Cadangan (.wlb)"),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

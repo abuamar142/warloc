@@ -208,6 +208,7 @@ class DatabaseHelper {
     final db = _database;
     if (db != null) {
       await db.close();
+      _database = null;
     }
   }
 }
