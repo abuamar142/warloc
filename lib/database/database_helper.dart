@@ -155,6 +155,19 @@ class DatabaseHelper {
     return result.map((json) => ChatMessage.fromMap(json)).toList();
   }
 
+  Future<List<ChatMessage>> getMessagesForThreadPaginated(int threadId, int limit, int offset) async {
+    final db = await instance.database;
+    final result = await db.query(
+      'messages',
+      where: 'threadId = ?',
+      whereArgs: [threadId],
+      orderBy: 'timestamp DESC, id DESC',
+      limit: limit,
+      offset: offset,
+    );
+    return result.map((json) => ChatMessage.fromMap(json)).toList().reversed.toList();
+  }
+
   Future<List<ChatMessage>> searchMessages(int threadId, String query) async {
     final db = await instance.database;
     final result = await db.query(

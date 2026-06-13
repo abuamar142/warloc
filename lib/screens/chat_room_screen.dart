@@ -10,7 +10,7 @@ import '../widgets/message_bubble.dart';
 class ChatRoomScreen extends StatefulWidget {
   final ChatThread thread;
 
-  const ChatRoomScreen({Key? key, required this.thread}) : super(key: key);
+  const ChatRoomScreen({super.key, required this.thread});
 
   @override
   State<ChatRoomScreen> createState() => _ChatRoomScreenState();
@@ -25,23 +25,43 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   bool _isLoading = true;
   bool _isSearching = false;
 
+  // Pagination states
+  bool _isLoadingMore = false;
+  bool _hasMoreMessages = true;
+  static const int _limit = 100;
+
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_scrollListener);
     _loadMessages();
   }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
+  void _scrollListener() {
+    // Trigger load more when user scrolls near the top
+    if (_scrollController.position.pixels <= 100 &&
+        !_isLoadingMore &&
+        _hasMoreMessages &&
+        !_isSearching) {
+      _loadMoreMessages();
+    }
+  }
+
   Future<void> _loadMessages() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _hasMoreMessages = true;
+    });
     final db = DatabaseHelper.instance;
-    final messages = await db.getMessagesForThread(widget.thread.id!);
+    final messages = await db.getMessagesForThreadPaginated(widget.thread.id!, _limit, 0);
     
     final appDir = await getApplicationDocumentsDirectory();
     final mediaDirPath = p.join(appDir.path, 'media', widget.thread.id.toString());
@@ -51,11 +71,45 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       _filteredMessages = messages;
       _mediaDirPath = mediaDirPath;
       _isLoading = false;
+      _hasMoreMessages = messages.length == _limit;
     });
 
     // Scroll to bottom after frame is rendered
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
+    });
+  }
+
+  Future<void> _loadMoreMessages() async {
+    setState(() => _isLoadingMore = true);
+
+    final db = DatabaseHelper.instance;
+    final oldMaxScroll = _scrollController.position.maxScrollExtent;
+    final oldPixels = _scrollController.position.pixels;
+
+    final newMessages = await db.getMessagesForThreadPaginated(
+      widget.thread.id!,
+      _limit,
+      _allMessages.length,
+    );
+
+    if (newMessages.length < _limit) {
+      _hasMoreMessages = false;
+    }
+
+    setState(() {
+      _allMessages.insertAll(0, newMessages);
+      _filteredMessages = _allMessages;
+      _isLoadingMore = false;
+    });
+
+    // Compensate scroll position to keep viewport stationary
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        final newMaxScroll = _scrollController.position.maxScrollExtent;
+        final heightDifference = newMaxScroll - oldMaxScroll;
+        _scrollController.jumpTo(oldPixels + heightDifference);
+      }
     });
   }
 
@@ -217,9 +271,26 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   child: ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: groupedItems.length,
+                    itemCount: groupedItems.length + (_isLoadingMore ? 1 : 0),
                     itemBuilder: (context, index) {
-                      final item = groupedItems[index];
+                      if (_isLoadingMore && index == 0) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Color(0xFF008069),
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+
+                      final itemIndex = _isLoadingMore ? index - 1 : index;
+                      final item = groupedItems[itemIndex];
                       
                       if (item.isHeader) {
                         return DateHeader(dateText: item.dateHeader!);

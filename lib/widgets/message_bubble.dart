@@ -158,7 +158,7 @@ class MessageBubble extends StatelessWidget {
           style: TextStyle(
             fontSize: 10,
             color: (isImageOrVideo && !hasCaption)
-                ? Colors.white.withOpacity(0.9)
+                ? Colors.white.withValues(alpha: 0.9)
                 : const Color(0x66000000),
           ),
         ),
@@ -180,7 +180,7 @@ class MessageBubble extends StatelessWidget {
       timestampWidget = Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.4),
+          color: Colors.black.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(10),
         ),
         child: timestampWidget,

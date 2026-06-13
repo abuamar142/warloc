@@ -122,7 +122,7 @@ class MediaBubbleRenderer extends StatelessWidget {
       width: double.infinity,
       height: 200,
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.85),
+        color: Colors.black.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Stack(
@@ -132,7 +132,7 @@ class MediaBubbleRenderer extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.5),
+              color: Colors.black.withValues(alpha: 0.5),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -178,7 +178,7 @@ class MediaBubbleRenderer extends StatelessWidget {
                     sizeStr,
                     style: const TextStyle(color: Colors.white70, fontSize: 11),
                   ),
-                if (timestampOverlay != null) timestampOverlay!,
+                ?timestampOverlay,
               ],
             ),
           ),
@@ -222,9 +222,9 @@ class MediaBubbleRenderer extends StatelessWidget {
         width: 250,
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.04),
+          color: Colors.black.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.black.withOpacity(0.05)),
+          border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
         ),
         child: Row(
           children: [
@@ -453,7 +453,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.04),
+          color: Colors.black.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -474,7 +474,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
       width: 250,
       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.02),
+        color: Colors.black.withValues(alpha: 0.02),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

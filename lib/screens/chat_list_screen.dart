@@ -14,7 +14,7 @@ import '../widgets/import_progress_dialog.dart';
 import 'chat_room_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
-  const ChatListScreen({Key? key}) : super(key: key);
+  const ChatListScreen({super.key});
 
   @override
   State<ChatListScreen> createState() => _ChatListScreenState();
@@ -201,9 +201,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
     if (confirmed == true && thread.id != null) {
       await DatabaseHelper.instance.deleteThread(thread.id!);
       _loadThreads();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Chat \"${thread.name}\" berhasil dihapus")),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Chat \"${thread.name}\" berhasil dihapus")),
+        );
+      }
     }
   }
 

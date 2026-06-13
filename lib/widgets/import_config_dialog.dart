@@ -97,35 +97,35 @@ class _ImportConfigDialogState extends State<ImportConfigDialog> {
               ),
               Row(
                 children: [
-                  Radio<bool>(
-                    value: true,
-                    groupValue: _createNewThread,
-                    activeColor: const Color(0xFF008069),
-                    onChanged: (val) {
+                  ChoiceChip(
+                    label: const Text("Thread Baru"),
+                    selected: _createNewThread,
+                    selectedColor: const Color(0x20008069),
+                    checkmarkColor: const Color(0xFF008069),
+                    onSelected: (val) {
                       setState(() {
-                        _createNewThread = val!;
+                        _createNewThread = true;
                       });
                     },
                   ),
-                  const Text("Thread Baru"),
-                  const SizedBox(width: 16),
-                  Radio<bool>(
-                    value: false,
-                    groupValue: _createNewThread,
-                    activeColor: const Color(0xFF008069),
-                    onChanged: (val) {
+                  const SizedBox(width: 12),
+                  ChoiceChip(
+                    label: const Text("Gabung Thread"),
+                    selected: !_createNewThread,
+                    selectedColor: const Color(0x20008069),
+                    checkmarkColor: const Color(0xFF008069),
+                    onSelected: (val) {
                       setState(() {
-                        _createNewThread = val!;
+                        _createNewThread = false;
                         if (_selectedExistingThread == null && widget.existingThreads.isNotEmpty) {
                           _selectedExistingThread = widget.existingThreads[0];
                         }
                       });
                     },
                   ),
-                  const Text("Gabung Thread"),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
             ],
 
             if (_createNewThread) ...[
