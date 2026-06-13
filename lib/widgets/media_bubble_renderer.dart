@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
+import 'package:audioplayers/audioplayers.dart';
+import 'package:video_player/video_player.dart';
 
 class MediaBubbleRenderer extends StatelessWidget {
   final String mediaPath;
@@ -185,7 +187,17 @@ class MediaBubbleRenderer extends StatelessWidget {
     );
 
     return GestureDetector(
-      onTap: () => _openFile(context, filePath),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FullScreenVideoPlayer(
+              filePath: filePath,
+              fileName: fileName,
+            ),
+          ),
+        );
+      },
       child: videoCard,
     );
   }
@@ -352,32 +364,80 @@ class AudioPlayerWidget extends StatefulWidget {
 }
 
 class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
+  late final AudioPlayer _player;
+  Duration _duration = Duration.zero;
+  Duration _position = Duration.zero;
   bool _isPlaying = false;
 
-  void _togglePlay() async {
-    setState(() {
-      _isPlaying = !_isPlaying;
-    });
-    
-    // Open using external system player
-    final result = await OpenFilex.open(widget.filePath);
-    if (result.type != ResultType.done && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Gagal memutar audio: ${result.message}"),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-    }
+  @override
+  void initState() {
+    super.initState();
+    _player = AudioPlayer();
+    _initAudioPlayer();
+  }
 
-    // Reset indicator back to pause after a few seconds
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() {
-          _isPlaying = false;
-        });
+  Future<void> _initAudioPlayer() async {
+    try {
+      await _player.setSource(DeviceFileSource(widget.filePath));
+
+      _player.onDurationChanged.listen((d) {
+        if (mounted) {
+          setState(() {
+            _duration = d;
+          });
+        }
+      });
+
+      _player.onPositionChanged.listen((p) {
+        if (mounted) {
+          setState(() {
+            _position = p;
+          });
+        }
+      });
+
+      _player.onPlayerStateChanged.listen((state) {
+        if (mounted) {
+          setState(() {
+            _isPlaying = state == PlayerState.playing;
+          });
+        }
+      });
+    } catch (e) {
+      debugPrint("Gagal menginisialisasi audio player: $e");
+    }
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  void _togglePlay() async {
+    try {
+      if (_isPlaying) {
+        await _player.pause();
+      } else {
+        await _player.play(DeviceFileSource(widget.filePath));
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Gagal memutar audio: $e"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, "0");
+    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
+    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
+    return "$twoDigitMinutes:$twoDigitSeconds";
   }
 
   @override
@@ -389,6 +449,25 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
         final bytes = file.lengthSync();
         sizeStr = MediaBubbleRenderer._formatBytes(bytes);
       } catch (_) {}
+    } else {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.audiotrack, color: Colors.grey, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              "Audio tidak ditemukan",
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            ),
+          ],
+        ),
+      );
     }
 
     return Container(
@@ -430,8 +509,19 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
                     thumbColor: const Color(0xFF00A884),
                   ),
                   child: Slider(
-                    value: 0.0,
-                    onChanged: (val) {},
+                    min: 0.0,
+                    max: _duration.inMilliseconds.toDouble() > 0.0
+                        ? _duration.inMilliseconds.toDouble()
+                        : 1.0,
+                    value: _position.inMilliseconds.toDouble().clamp(
+                          0.0,
+                          _duration.inMilliseconds.toDouble() > 0.0
+                              ? _duration.inMilliseconds.toDouble()
+                              : 1.0,
+                        ),
+                    onChanged: (val) {
+                      _player.seek(Duration(milliseconds: val.toInt()));
+                    },
                   ),
                 ),
                 Padding(
@@ -440,7 +530,9 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        sizeStr.isNotEmpty ? sizeStr : "Audio",
+                        _isPlaying || _position.inMilliseconds > 0
+                            ? "${_formatDuration(_position)} / ${_formatDuration(_duration)}"
+                            : (sizeStr.isNotEmpty ? "$sizeStr • ${_formatDuration(_duration)}" : _formatDuration(_duration)),
                         style: const TextStyle(fontSize: 10, color: Colors.grey),
                       ),
                       const Icon(
@@ -500,6 +592,242 @@ class FullScreenImageViewer extends StatelessWidget {
               },
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class FullScreenVideoPlayer extends StatefulWidget {
+  final String filePath;
+  final String fileName;
+
+  const FullScreenVideoPlayer({
+    super.key,
+    required this.filePath,
+    required this.fileName,
+  });
+
+  @override
+  State<FullScreenVideoPlayer> createState() => _FullScreenVideoPlayerState();
+}
+
+class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
+  late VideoPlayerController _controller;
+  bool _showControls = true;
+  bool _isMuted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.file(File(widget.filePath))
+      ..initialize().then((_) {
+        if (mounted) {
+          setState(() {});
+          _controller.play();
+        }
+      });
+
+    _controller.addListener(() {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _togglePlay() {
+    setState(() {
+      if (_controller.value.isPlaying) {
+        _controller.pause();
+      } else {
+        _controller.play();
+      }
+    });
+  }
+
+  void _toggleMute() {
+    setState(() {
+      _isMuted = !_isMuted;
+      _controller.setVolume(_isMuted ? 0.0 : 1.0);
+    });
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, "0");
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return "$minutes:$seconds";
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isInitialized = _controller.value.isInitialized;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: GestureDetector(
+        onTap: () {
+          setState(() {
+            _showControls = !_showControls;
+          });
+        },
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Video display
+            if (isInitialized)
+              Center(
+                child: AspectRatio(
+                  aspectRatio: _controller.value.aspectRatio,
+                  child: VideoPlayer(_controller),
+                ),
+              )
+            else
+              const Center(
+                child: CircularProgressIndicator(color: Color(0xFF00A884)),
+              ),
+
+            // AppBar / Top bar control
+            if (_showControls)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.only(top: 40, bottom: 10, left: 10, right: 10),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.black87, Colors.transparent],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          widget.fileName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // Bottom bar controls
+            if (_showControls && isInitialized)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.transparent, Colors.black87],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Video progress indicator slider
+                      SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          trackHeight: 3,
+                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                          activeTrackColor: const Color(0xFF00A884),
+                          inactiveTrackColor: Colors.white24,
+                          thumbColor: const Color(0xFF00A884),
+                        ),
+                        child: Slider(
+                          min: 0.0,
+                          max: _controller.value.duration.inMilliseconds.toDouble(),
+                          value: _controller.value.position.inMilliseconds.toDouble().clamp(
+                            0.0,
+                            _controller.value.duration.inMilliseconds.toDouble(),
+                          ),
+                          onChanged: (val) {
+                            _controller.seekTo(Duration(milliseconds: val.toInt()));
+                          },
+                        ),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Play / Pause button
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: Icon(
+                                  _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                                onPressed: _togglePlay,
+                              ),
+                              const SizedBox(width: 8),
+                              // Duration display
+                              Text(
+                                "${_formatDuration(_controller.value.position)} / ${_formatDuration(_controller.value.duration)}",
+                                style: const TextStyle(color: Colors.white70, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          // Volume / Mute button
+                          IconButton(
+                            icon: Icon(
+                              _isMuted ? Icons.volume_off : Icons.volume_up,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                            onPressed: _toggleMute,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // Big Play/Pause icon in the center if paused
+            if (_showControls && isInitialized && !_controller.value.isPlaying)
+              GestureDetector(
+                onTap: _togglePlay,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: const BoxDecoration(
+                    color: Colors.black45,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.play_arrow,
+                    color: Colors.white,
+                    size: 48,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
