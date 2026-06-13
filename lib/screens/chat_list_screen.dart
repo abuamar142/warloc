@@ -59,6 +59,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 
   Future<void> _pickAndImportFile() async {
+    bool isDialogShown = false;
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
@@ -79,6 +80,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
           child: CircularProgressIndicator(color: Color(0xFF008069)),
         ),
       );
+      isDialogShown = true;
 
       String? targetPathToParse;
       String? tempDirPath;
@@ -91,7 +93,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
         final chatLogPath = await MediaHelper.extractZipAndFindChatLog(path, tempDirFile);
         if (chatLogPath == null) {
-          if (mounted) Navigator.pop(context); // Dismiss loading
+          if (mounted && isDialogShown) {
+            Navigator.pop(context); // Dismiss loading
+            isDialogShown = false;
+          }
           await tempDirFile.delete(recursive: true);
           _showErrorSnackBar("Tidak ada file log chat (.txt) di dalam file zip.");
           return;
@@ -103,8 +108,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
       final parsedResult = await WhatsAppParser.parseFile(targetPathToParse);
 
-      if (!mounted) return;
-      Navigator.pop(context); // Dismiss parsing loading
+      if (mounted && isDialogShown) {
+        Navigator.pop(context); // Dismiss parsing loading
+        isDialogShown = false;
+      }
 
       if (parsedResult.messages.isEmpty) {
         if (tempDirPath != null) {
@@ -118,7 +125,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
       _showImportConfigDialog(path, parsedResult, tempDirPath: tempDirPath);
     } catch (e) {
-      _showErrorSnackBar("Gagal membaca file: $e");
+      if (mounted) {
+        if (isDialogShown) {
+          Navigator.pop(context);
+        }
+        _showErrorSnackBar("Gagal membaca file: $e");
+      }
     }
   }
 
@@ -211,17 +223,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 
   Future<void> _exportBackup() async {
+    bool isDialogShown = false;
     try {
-      final outputPath = await FilePicker.saveFile(
-        dialogTitle: 'Simpan Cadangan Warloc',
-        fileName: 'warloc_backup_${DateTime.now().millisecondsSinceEpoch}.wlb',
-        type: FileType.custom,
-        allowedExtensions: ['wlb', 'zip'],
-      );
-
-      if (outputPath == null) return;
-
-      if (!mounted) return;
+      // 1. Show loading dialog first
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -229,27 +233,60 @@ class _ChatListScreenState extends State<ChatListScreen> {
           child: CircularProgressIndicator(color: Color(0xFF008069)),
         ),
       );
+      isDialogShown = true;
 
-      await BackupHelper.createBackup(outputPath);
+      // 2. Generate backup locally in internal temporary folder (scoped storage safe)
+      final tempDir = await getTemporaryDirectory();
+      final tempPath = p.join(tempDir.path, 'warloc_backup_${DateTime.now().millisecondsSinceEpoch}.wlb');
+      await BackupHelper.createBackup(tempPath);
 
-      if (!mounted) return;
-      Navigator.pop(context); // Dismiss loading dialog
+      final backupBytes = await File(tempPath).readAsBytes();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Cadangan data berhasil diekspor!"),
-          backgroundColor: Color(0xFF008069),
-        ),
+      // Close loading dialog before opening native save dialog
+      if (mounted && isDialogShown) {
+        Navigator.pop(context);
+        isDialogShown = false;
+      }
+
+      // 3. Prompt user to select save destination and write bytes natively
+      final outputPath = await FilePicker.saveFile(
+        dialogTitle: 'Simpan Cadangan Warloc',
+        fileName: 'warloc_backup_${DateTime.now().millisecondsSinceEpoch}.wlb',
+        type: FileType.custom,
+        allowedExtensions: ['wlb', 'zip'],
+        bytes: backupBytes,
       );
+
+      // Clean up temporary file
+      try {
+        final tempFile = File(tempPath);
+        if (await tempFile.exists()) {
+          await tempFile.delete();
+        }
+      } catch (_) {}
+
+      if (outputPath == null) return; // User cancelled
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Cadangan data berhasil diekspor!"),
+            backgroundColor: Color(0xFF008069),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context); // Dismiss loading dialog
+        if (isDialogShown) {
+          Navigator.pop(context);
+        }
         _showErrorSnackBar("Gagal mengekspor cadangan: $e");
       }
     }
   }
 
   Future<void> _importBackup() async {
+    bool isDialogShown = false;
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
@@ -355,6 +392,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
           child: CircularProgressIndicator(color: Color(0xFF008069)),
         ),
       );
+      isDialogShown = true;
 
       bool success = false;
       if (importMode == 'overwrite') {
@@ -363,23 +401,29 @@ class _ChatListScreenState extends State<ChatListScreen> {
         success = await BackupHelper.restoreBackupMerge(backupPath);
       }
 
-      if (!mounted) return;
-      Navigator.pop(context); // Dismiss loading dialog
+      if (mounted && isDialogShown) {
+        Navigator.pop(context); // Dismiss loading dialog
+        isDialogShown = false;
+      }
 
       if (success) {
         _loadThreads();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Cadangan data berhasil dipulihkan!"),
-            backgroundColor: Color(0xFF008069),
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Cadangan data berhasil dipulihkan!"),
+              backgroundColor: Color(0xFF008069),
+            ),
+          );
+        }
       } else {
         _showErrorSnackBar("Gagal memulihkan cadangan. Pastikan format file cadangan valid.");
       }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context); // Dismiss loading dialog
+        if (isDialogShown) {
+          Navigator.pop(context); // Dismiss loading dialog
+        }
         _showErrorSnackBar("Gagal mengimpor cadangan: $e");
       }
     }
