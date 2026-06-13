@@ -46,12 +46,16 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   }
 
   void _scrollListener() {
-    // Trigger load more when user scrolls near the top
-    if (_scrollController.position.pixels <= 100 &&
-        !_isLoadingMore &&
-        _hasMoreMessages &&
-        !_isSearching) {
-      _loadMoreMessages();
+    if (_scrollController.hasClients) {
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      final currentScroll = _scrollController.position.pixels;
+      // Trigger load more when user scrolls near the top (which is maxScrollExtent in reversed list)
+      if (maxScroll - currentScroll <= 100 &&
+          !_isLoadingMore &&
+          _hasMoreMessages &&
+          !_isSearching) {
+        _loadMoreMessages();
+      }
     }
   }
 
@@ -73,19 +77,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       _isLoading = false;
       _hasMoreMessages = messages.length == _limit;
     });
-
-    // Scroll to bottom after frame is rendered
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToBottom();
-    });
   }
 
   Future<void> _loadMoreMessages() async {
     setState(() => _isLoadingMore = true);
 
     final db = DatabaseHelper.instance;
-    final oldMaxScroll = _scrollController.position.maxScrollExtent;
-    final oldPixels = _scrollController.position.pixels;
 
     final newMessages = await db.getMessagesForThreadPaginated(
       widget.thread.id!,
@@ -102,21 +99,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       _filteredMessages = _allMessages;
       _isLoadingMore = false;
     });
-
-    // Compensate scroll position to keep viewport stationary
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        final newMaxScroll = _scrollController.position.maxScrollExtent;
-        final heightDifference = newMaxScroll - oldMaxScroll;
-        _scrollController.jumpTo(oldPixels + heightDifference);
-      }
-    });
-  }
-
-  void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-    }
   }
 
   void _filterMessages(String query) {
@@ -270,10 +252,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 Expanded(
                   child: ListView.builder(
                     controller: _scrollController,
+                    reverse: true,
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     itemCount: groupedItems.length + (_isLoadingMore ? 1 : 0),
                     itemBuilder: (context, index) {
-                      if (_isLoadingMore && index == 0) {
+                      if (_isLoadingMore && index == groupedItems.length) {
                         return const Padding(
                           padding: EdgeInsets.symmetric(vertical: 12),
                           child: Center(
@@ -289,8 +272,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                         );
                       }
 
-                      final itemIndex = _isLoadingMore ? index - 1 : index;
-                      final item = groupedItems[itemIndex];
+                      final item = groupedItems[groupedItems.length - 1 - index];
                       
                       if (item.isHeader) {
                         return DateHeader(dateText: item.dateHeader!);
