@@ -37,8 +37,10 @@ class DatabaseHelper {
 
   Future _onConfigure(Database db) async {
     await db.execute('PRAGMA foreign_keys = ON');
-    await db.execute('PRAGMA journal_mode = WAL');
-    await db.execute('PRAGMA synchronous = NORMAL');
+    try {
+      await db.rawQuery('PRAGMA journal_mode = WAL');
+      await db.rawQuery('PRAGMA synchronous = NORMAL');
+    } catch (_) {}
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
