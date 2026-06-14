@@ -36,11 +36,22 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
       final db = DatabaseHelper.instance;
       final messages = await db.getMediaMessagesForThread(widget.thread.id!);
       
+      final List<ChatMessage> filteredMessages = [];
+      final Set<String> seenMediaPaths = {};
+
+      for (final msg in messages) {
+        if (msg.mediaPath == null || msg.mediaPath!.isEmpty) continue;
+        if (!seenMediaPaths.contains(msg.mediaPath)) {
+          seenMediaPaths.add(msg.mediaPath!);
+          filteredMessages.add(msg);
+        }
+      }
+
       // Group by Indonesian Month Year
       final Map<String, List<ChatMessage>> groups = {};
       final List<String> monthsOrder = [];
 
-      for (final msg in messages) {
+      for (final msg in filteredMessages) {
         final key = _getIndonesianMonthYear(msg.timestamp);
         if (!groups.containsKey(key)) {
           groups[key] = [];
@@ -50,7 +61,7 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
       }
 
       setState(() {
-        _mediaMessages = messages;
+        _mediaMessages = filteredMessages;
         _groupedMedia = groups;
         _sortedMonths = monthsOrder;
         _isLoading = false;
