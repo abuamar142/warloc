@@ -45,6 +45,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   int _searchOffset = 0;
   static const int _searchLimit = 20;
   int? _highlightedMessageId;
+  final GlobalKey _highlightedKey = GlobalKey();
 
   @override
   void initState() {
@@ -174,44 +175,34 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final groupedItems = _buildGroupedItems();
-      int targetIdx = -1;
-      for (int i = 0; i < groupedItems.length; i++) {
-        if (!groupedItems[i].isHeader && groupedItems[i].message?.id == targetMessageId) {
-          targetIdx = i;
-          break;
-        }
-      }
+      
+      setState(() {
+        _highlightedMessageId = targetMessageId;
+      });
 
-      if (targetIdx != -1) {
-        final listIndex = groupedItems.length - 1 - targetIdx;
-        if (_scrollController.hasClients) {
-          _scrollController.removeListener(_scrollListener);
-
-          final double maxScroll = _scrollController.position.maxScrollExtent;
-          double targetOffset = listIndex * 90.0;
-          if (targetOffset > maxScroll) {
-            targetOffset = maxScroll;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (_highlightedKey.currentContext != null) {
+          if (_scrollController.hasClients) {
+            _scrollController.removeListener(_scrollListener);
+            Scrollable.ensureVisible(
+              _highlightedKey.currentContext!,
+              alignment: 0.5,
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOut,
+            ).then((_) {
+              if (mounted) {
+                _scrollController.removeListener(_scrollListener);
+                _scrollController.addListener(_scrollListener);
+              }
+            });
           }
-          if (targetOffset < 0) {
-            targetOffset = 0;
+        } else {
+          if (_scrollController.hasClients) {
+            _scrollController.removeListener(_scrollListener);
+            _scrollController.addListener(_scrollListener);
           }
-
-          _scrollController.animateTo(
-            targetOffset,
-            duration: const Duration(milliseconds: 600),
-            curve: Curves.easeOut,
-          ).then((_) {
-            if (mounted) {
-              _scrollController.removeListener(_scrollListener);
-              _scrollController.addListener(_scrollListener);
-            }
-          });
         }
-
-        setState(() {
-          _highlightedMessageId = targetMessageId;
-        });
 
         Future.delayed(const Duration(milliseconds: 1500), () {
           if (mounted) {
@@ -222,7 +213,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             });
           }
         });
-      }
+      });
     });
   }
 
@@ -784,6 +775,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                       child: ListView.builder(
                         controller: _scrollController,
                         reverse: true,
+                        cacheExtent: 5000,
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         itemCount: groupedItems.length + (_isLoadingMore ? 1 : 0),
                         itemBuilder: (context, index) {
@@ -808,11 +800,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                           if (item.isHeader) {
                             return DateHeader(dateText: item.dateHeader!);
                           } else {
+                            final isTarget = _highlightedMessageId == item.message!.id;
                             return MessageBubble(
+                              key: isTarget ? _highlightedKey : null,
                               message: item.message!,
                               meName: _currentThread.meName,
                               mediaDirPath: _mediaDirPath,
-                              isHighlighted: _highlightedMessageId == item.message!.id,
+                              isHighlighted: isTarget,
                             );
                           }
                         },
