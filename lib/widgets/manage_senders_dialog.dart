@@ -245,68 +245,70 @@ class _ManageSendersDialogState extends State<ManageSendersDialog> {
                             "Tidak ada pengirim terdeteksi di chat ini.",
                             style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
                           )
-                        : ListView.separated(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: _uniqueSenders.length,
-                            separatorBuilder: (context, index) => const Divider(height: 16),
-                            itemBuilder: (context, index) {
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: List.generate(_uniqueSenders.length, (index) {
                               final sender = _uniqueSenders[index];
                               final currentRole = _senderMappings[sender] ?? 'contact';
 
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    sender,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
+                              return Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: index == _uniqueSenders.length - 1 ? 0 : 16.0,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      sender,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: ChoiceChip(
-                                          label: const Center(
-                                            child: Text("Kontak (Kiri)"),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: ChoiceChip(
+                                            label: const Center(
+                                              child: Text("Kontak (Kiri)"),
+                                            ),
+                                            selected: currentRole == 'contact',
+                                            selectedColor: const Color(0x20008069),
+                                            checkmarkColor: const Color(0xFF008069),
+                                            onSelected: (val) {
+                                              if (val) {
+                                                setState(() {
+                                                  _senderMappings[sender] = 'contact';
+                                                });
+                                              }
+                                            },
                                           ),
-                                          selected: currentRole == 'contact',
-                                          selectedColor: const Color(0x20008069),
-                                          checkmarkColor: const Color(0xFF008069),
-                                          onSelected: (val) {
-                                            if (val) {
-                                              setState(() {
-                                                _senderMappings[sender] = 'contact';
-                                              });
-                                            }
-                                          },
                                         ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: ChoiceChip(
-                                          label: const Center(
-                                            child: Text("Saya (Kanan)"),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: ChoiceChip(
+                                            label: const Center(
+                                              child: Text("Saya (Kanan)"),
+                                            ),
+                                            selected: currentRole == 'me',
+                                            selectedColor: const Color(0x20008069),
+                                            checkmarkColor: const Color(0xFF008069),
+                                            onSelected: (val) {
+                                              if (val) {
+                                                setState(() {
+                                                  _senderMappings[sender] = 'me';
+                                                });
+                                              }
+                                            },
                                           ),
-                                          selected: currentRole == 'me',
-                                          selectedColor: const Color(0x20008069),
-                                          checkmarkColor: const Color(0xFF008069),
-                                          onSelected: (val) {
-                                            if (val) {
-                                              setState(() {
-                                                _senderMappings[sender] = 'me';
-                                              });
-                                            }
-                                          },
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               );
-                            },
+                            }),
                           ),
                   ],
                 ),
