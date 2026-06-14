@@ -37,6 +37,8 @@ class DatabaseHelper {
 
   Future _onConfigure(Database db) async {
     await db.execute('PRAGMA foreign_keys = ON');
+    await db.execute('PRAGMA journal_mode = WAL');
+    await db.execute('PRAGMA synchronous = NORMAL');
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -161,8 +163,51 @@ class DatabaseHelper {
     ChatMessage message, {
     String? threadMeName,
     String? importMeName,
+    Map<String, List<({int timestamp, String sender})>>? duplicateCache,
   }) async {
-    // Fallback to simple exact match if meNames are not provided
+    // If cache is provided, perform in-memory deduplication checks
+    if (duplicateCache != null) {
+      if (threadMeName == null || importMeName == null) {
+        final List<({int timestamp, String sender})>? list = duplicateCache[message.content];
+        if (list != null) {
+          for (final dup in list) {
+            if (dup.timestamp == message.timestamp && dup.sender == message.sender) {
+              return null; // Duplicate found, skip
+            }
+          }
+        }
+        final id = await txn.insert('messages', message.toMap());
+        duplicateCache.putIfAbsent(message.content, () => []).add((
+          timestamp: message.timestamp,
+          sender: message.sender,
+        ));
+        return id;
+      }
+
+      final bool isMessageMe = message.sender == importMeName;
+      final List<({int timestamp, String sender})>? list = duplicateCache[message.content];
+
+      if (list != null) {
+        for (final dup in list) {
+          final bool isDupMe = dup.sender == threadMeName;
+          if (isMessageMe == isDupMe) {
+            if ((dup.timestamp - message.timestamp).abs() < 60000) {
+              return null; // Duplicate found, skip
+            }
+          }
+        }
+      }
+
+      // No duplicate in cache, insert and update cache
+      final id = await txn.insert('messages', message.toMap());
+      duplicateCache.putIfAbsent(message.content, () => []).add((
+        timestamp: message.timestamp,
+        sender: message.sender,
+      ));
+      return id;
+    }
+
+    // Fallback to normal SQLite duplicate queries if cache is null
     if (threadMeName == null || importMeName == null) {
       final duplicate = await txn.query(
         'messages',
@@ -171,7 +216,6 @@ class DatabaseHelper {
         limit: 1,
       );
       if (duplicate.isNotEmpty) {
-        // Duplicate found, skip
         return null;
       }
       return await txn.insert('messages', message.toMap());
@@ -179,7 +223,6 @@ class DatabaseHelper {
 
     final bool isMessageMe = message.sender == importMeName;
 
-    // Check if duplicate exists with same content in the same thread (with LIMIT 10)
     final potentialDuplicates = await txn.query(
       'messages',
       where: 'threadId = ? AND content = ?',
@@ -192,16 +235,13 @@ class DatabaseHelper {
       final dupTime = dup['timestamp'] as int;
       final bool isDupMe = dupSender == threadMeName;
 
-      // Duplicate if roles match and timestamp is within 60 seconds (60000ms)
       if (isMessageMe == isDupMe) {
         if ((dupTime - message.timestamp).abs() < 60000) {
-          // Duplicate found, skip
           return null;
         }
       }
     }
 
-    // No duplicate, insert
     return await txn.insert('messages', message.toMap());
   }
 
@@ -209,6 +249,7 @@ class DatabaseHelper {
     List<ChatMessage> messages, {
     String? threadMeName,
     String? importMeName,
+    Map<String, List<({int timestamp, String sender})>>? duplicateCache,
   }) async {
     final db = await instance.database;
     int imported = 0;
@@ -220,6 +261,7 @@ class DatabaseHelper {
           msg,
           threadMeName: threadMeName,
           importMeName: importMeName,
+          duplicateCache: duplicateCache,
         );
         if (id != null) {
           imported++;
@@ -229,6 +271,25 @@ class DatabaseHelper {
       }
     });
     return (imported, skipped);
+  }
+
+  Future<Map<String, List<({int timestamp, String sender})>>> loadDuplicateCheckCache(int threadId) async {
+    final db = await instance.database;
+    final result = await db.query(
+      'messages',
+      columns: ['timestamp', 'sender', 'content'],
+      where: 'threadId = ?',
+      whereArgs: [threadId],
+    );
+
+    final Map<String, List<({int timestamp, String sender})>> cache = {};
+    for (final row in result) {
+      final content = row['content'] as String;
+      final timestamp = row['timestamp'] as int;
+      final sender = row['sender'] as String;
+      cache.putIfAbsent(content, () => []).add((timestamp: timestamp, sender: sender));
+    }
+    return cache;
   }
 
   Future<List<ChatMessage>> getMessagesForThread(int threadId) async {

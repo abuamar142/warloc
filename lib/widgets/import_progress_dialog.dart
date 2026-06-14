@@ -38,6 +38,7 @@ class _ImportProgressDialogState extends State<ImportProgressDialog> {
   int _skippedCount = 0;
   double _progress = 0.0;
   late final int _total;
+  Map<String, List<({int timestamp, String sender})>>? _duplicateCache;
 
   @override
   void initState() {
@@ -53,11 +54,13 @@ class _ImportProgressDialogState extends State<ImportProgressDialog> {
     if (widget.isNew) {
       final newThread = ChatThread(name: widget.name, meName: widget.meName);
       threadId = await db.insertThread(newThread);
+      _duplicateCache = {};
     } else {
       threadId = widget.existingThread!.id!;
       if (widget.existingThread!.meName != widget.meName) {
         await db.updateThread(widget.existingThread!.copyWith(meName: widget.meName));
       }
+      _duplicateCache = await db.loadDuplicateCheckCache(threadId);
     }
 
     // Copy media files if tempDirPath is provided
@@ -122,6 +125,7 @@ class _ImportProgressDialogState extends State<ImportProgressDialog> {
         batchMessages,
         threadMeName: widget.existingThread?.meName ?? widget.meName,
         importMeName: widget.meName,
+        duplicateCache: _duplicateCache,
       );
 
       if (mounted) {
