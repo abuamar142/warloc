@@ -13,7 +13,8 @@ import '../utils/telegram_parser.dart';
 import '../utils/media_helper.dart';
 import '../widgets/chat_thread_tile.dart';
 import '../widgets/import_config_dialog.dart';
-import '../widgets/import_progress_dialog.dart';
+import '../services/chat_import_service.dart';
+import '../widgets/import_task_card.dart';
 import '../utils/backup_helper.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/loading_indicator.dart';
@@ -35,11 +36,33 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Map<int, ChatMessage?> _lastMessages = {};
   Map<int, int> _messageCounts = {};
   bool _isLoading = true;
+  final Set<String> _reloadedTaskIds = {};
 
   @override
   void initState() {
     super.initState();
     _loadThreads();
+    ChatImportService.instance.addListener(_onImportServiceChanged);
+  }
+
+  @override
+  void dispose() {
+    ChatImportService.instance.removeListener(_onImportServiceChanged);
+    super.dispose();
+  }
+
+  void _onImportServiceChanged() {
+    final tasks = ChatImportService.instance.tasks;
+    bool needsReload = false;
+    for (final task in tasks) {
+      if (task.status == ImportStatus.completed && !_reloadedTaskIds.contains(task.id)) {
+        _reloadedTaskIds.add(task.id);
+        needsReload = true;
+      }
+    }
+    if (needsReload) {
+      _loadThreads();
+    }
   }
 
   Future<void> _loadThreads() async {
@@ -181,18 +204,13 @@ class _ChatListScreenState extends State<ChatListScreen> {
     ParsedChatResult parsedData, {
     String? tempDirPath,
   }) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => ImportProgressDialog(
-        isNew: isNew,
-        name: name,
-        meName: meName,
-        existingThread: existingThread,
-        parsedData: parsedData,
-        tempDirPath: tempDirPath,
-        onComplete: _loadThreads,
-      ),
+    ChatImportService.instance.startImport(
+      isNew: isNew,
+      name: name,
+      meName: meName,
+      existingThread: existingThread,
+      parsedData: parsedData,
+      tempDirPath: tempDirPath,
     );
   }
 
@@ -468,41 +486,58 @@ class _ChatListScreenState extends State<ChatListScreen> {
       ),
       body: _isLoading
           ? const CustomLoadingIndicator()
-          : _threads.isEmpty
-          ? EmptyStateWidget(
-              icon: Icons.chat_bubble_outline,
-              title: "Belum ada chat terimpor",
-              description: "Silakan klik tombol '+' di bawah untuk memilih file .txt ekspor WhatsApp Anda.",
-              actionButton: AppButton(
-                onPressed: _pickAndImportFile,
-                icon: Icons.add,
-                label: "Impor Chat Sekarang",
-              ),
-            )
-          : ListView.separated(
-              itemCount: _threads.length,
-              separatorBuilder: (context, index) =>
-                  const Divider(height: 1, indent: 72),
-              itemBuilder: (context, index) {
-                final thread = _threads[index];
-                final lastMsg = _lastMessages[thread.id];
-                final count = _messageCounts[thread.id] ?? 0;
-
-                return ChatThreadTile(
-                  thread: thread,
-                  lastMessage: lastMsg,
-                  messageCount: count,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ChatRoomScreen(thread: thread),
-                      ),
-                    ).then((_) => _loadThreads());
+          : Column(
+              children: [
+                ListenableBuilder(
+                  listenable: ChatImportService.instance,
+                  builder: (context, _) {
+                    final tasks = ChatImportService.instance.tasks;
+                    if (tasks.isEmpty) return const SizedBox.shrink();
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: tasks.map((t) => ImportTaskCard(task: t)).toList(),
+                    );
                   },
-                  onDelete: () => _deleteThread(thread),
-                );
-              },
+                ),
+                Expanded(
+                  child: _threads.isEmpty
+                      ? EmptyStateWidget(
+                          icon: Icons.chat_bubble_outline,
+                          title: "Belum ada chat terimpor",
+                          description: "Silakan klik tombol '+' di bawah untuk memilih file .txt ekspor WhatsApp Anda.",
+                          actionButton: AppButton(
+                            onPressed: _pickAndImportFile,
+                            icon: Icons.add,
+                            label: "Impor Chat Sekarang",
+                          ),
+                        )
+                      : ListView.separated(
+                          itemCount: _threads.length,
+                          separatorBuilder: (context, index) =>
+                              const Divider(height: 1, indent: 72),
+                          itemBuilder: (context, index) {
+                            final thread = _threads[index];
+                            final lastMsg = _lastMessages[thread.id];
+                            final count = _messageCounts[thread.id] ?? 0;
+
+                            return ChatThreadTile(
+                              thread: thread,
+                              lastMessage: lastMsg,
+                              messageCount: count,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ChatRoomScreen(thread: thread),
+                                  ),
+                                ).then((_) => _loadThreads());
+                              },
+                              onDelete: () => _deleteThread(thread),
+                            );
+                          },
+                        ),
+                ),
+              ],
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: _pickAndImportFile,
