@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
@@ -32,6 +33,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   bool _isLoadingMore = false;
   bool _hasMoreMessages = true;
   static const int _limit = 100;
+  int _messagesOffset = 0;
 
   // Search states
   static final List<String> _searchHistory = [];
@@ -98,6 +100,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     setState(() {
       _isLoading = true;
       _hasMoreMessages = true;
+      _messagesOffset = 0;
     });
     final db = DatabaseHelper.instance;
     final messages = await db.getMessagesForThreadPaginated(_currentThread.id!, _limit, 0);
@@ -122,7 +125,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     final newMessages = await db.getMessagesForThreadPaginated(
       _currentThread.id!,
       _limit,
-      _allMessages.length,
+      _messagesOffset + _allMessages.length,
     );
 
     if (newMessages.length < _limit) {
@@ -136,18 +139,29 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     });
   }
 
-  Future<void> _loadMessagesWithTargetCount(int count, {required int targetMessageId}) async {
+  Future<void> _jumpToSearchResultMessage({required int targetMessageId, required int timestamp}) async {
     setState(() {
       _isLoading = true;
     });
 
     final db = DatabaseHelper.instance;
-    final messages = await db.getMessagesForThreadPaginated(_currentThread.id!, count, 0);
+    final countNewer = await db.getMessageIndexInThread(
+      _currentThread.id!,
+      targetMessageId,
+      timestamp,
+    );
+
+    _messagesOffset = max(0, countNewer - 50);
+
+    final messages = await db.getMessagesForThreadPaginated(
+      _currentThread.id!,
+      100,
+      _messagesOffset,
+    );
 
     final appDir = await getApplicationDocumentsDirectory();
     final mediaDirPath = p.join(appDir.path, 'media', _currentThread.id.toString());
 
-    // Check if we actually have more messages in total
     final totalInDb = await db.getMessageCountForThread(_currentThread.id!);
 
     setState(() {
@@ -155,7 +169,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       _filteredMessages = messages;
       _mediaDirPath = mediaDirPath;
       _isLoading = false;
-      _hasMoreMessages = _allMessages.length < totalInDb;
+      _hasMoreMessages = (_messagesOffset + _allMessages.length) < totalInDb;
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -172,6 +186,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       if (targetIdx != -1) {
         final listIndex = groupedItems.length - 1 - targetIdx;
         if (_scrollController.hasClients) {
+          _scrollController.removeListener(_scrollListener);
+
           final double maxScroll = _scrollController.position.maxScrollExtent;
           double targetOffset = listIndex * 90.0;
           if (targetOffset > maxScroll) {
@@ -185,7 +201,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             targetOffset,
             duration: const Duration(milliseconds: 600),
             curve: Curves.easeOut,
-          );
+          ).then((_) {
+            if (mounted) {
+              _scrollController.removeListener(_scrollListener);
+              _scrollController.addListener(_scrollListener);
+            }
+          });
         }
 
         setState(() {
@@ -487,19 +508,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           });
         }
 
-        final db = DatabaseHelper.instance;
-        final countNewer = await db.getMessageIndexInThread(
-          _currentThread.id!,
-          message.id!,
-          message.timestamp,
-        );
-
         setState(() {
           _isSearching = false;
         });
 
-        final totalToLoad = countNewer + 50;
-        await _loadMessagesWithTargetCount(totalToLoad, targetMessageId: message.id!);
+        await _jumpToSearchResultMessage(targetMessageId: message.id!, timestamp: message.timestamp);
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
@@ -827,6 +840,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     ),
                   ],
                 ),
+      floatingActionButton: _messagesOffset > 0
+          ? FloatingActionButton.extended(
+              onPressed: _loadMessages,
+              backgroundColor: const Color(0xFF008069),
+              icon: const Icon(Icons.arrow_downward, color: Colors.white),
+              label: const Text("Pesan Terbaru", style: TextStyle(color: Colors.white)),
+            )
+          : null,
     );
   }
 
