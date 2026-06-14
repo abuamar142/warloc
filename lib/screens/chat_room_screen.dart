@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import '../database/database_helper.dart';
@@ -33,6 +35,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   String? _mediaDirPath;
   bool _isLoading = true;
   bool _isSearching = false;
+
+  // Floating Date Overlay States
+  String _floatingDate = '';
+  bool _showFloatingDate = false;
+  Timer? _floatingDateTimer;
 
   // Pagination states
   bool _isLoadingMore = false;
@@ -76,6 +83,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     _searchScrollController.removeListener(_searchScrollListener);
     _searchScrollController.dispose();
     _searchController.dispose();
+    _floatingDateTimer?.cancel();
     super.dispose();
   }
 
@@ -89,6 +97,76 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           _hasMoreMessages &&
           !_isSearching) {
         _loadMoreMessages();
+      }
+      _updateFloatingDate();
+    }
+  }
+
+  void _updateFloatingDate() {
+    if (!mounted || _groupedItems.isEmpty || !_scrollController.hasClients) return;
+
+    final scrollContext = _scrollController.position.context.notificationContext as Element?;
+    if (scrollContext == null) return;
+
+    int? topVisibleIndex;
+    double minDistance = double.infinity;
+    
+    // Top offset of the viewport below the AppBar
+    final double viewportTop = MediaQuery.of(context).padding.top + kToolbarHeight;
+
+    void visitDescendants(Element element) {
+      final renderObject = element.renderObject;
+      if (renderObject is RenderIndexedSemantics) {
+        final renderBox = renderObject as RenderBox;
+        if (renderBox.hasSize) {
+          final position = renderBox.localToGlobal(Offset.zero);
+          final double y = position.dy;
+          
+          final double distance = (y - viewportTop).abs();
+          if (distance < minDistance) {
+            minDistance = distance;
+            topVisibleIndex = renderObject.index;
+          }
+        }
+      }
+      element.visitChildren(visitDescendants);
+    }
+
+    visitDescendants(scrollContext);
+
+    if (topVisibleIndex != null) {
+      final actualIndex = _groupedItems.length - 1 - topVisibleIndex!;
+      if (actualIndex >= 0 && actualIndex < _groupedItems.length) {
+        final item = _groupedItems[actualIndex];
+        
+        String? dateText;
+        if (item.isHeader) {
+          dateText = item.dateHeader;
+        } else if (item.message != null) {
+          dateText = DateFormatter.formatDateHeader(item.message!.timestamp);
+        }
+
+        if (dateText != null) {
+          if (dateText != _floatingDate) {
+            setState(() {
+              _floatingDate = dateText!;
+              _showFloatingDate = true;
+            });
+          } else if (!_showFloatingDate) {
+            setState(() {
+              _showFloatingDate = true;
+            });
+          }
+
+          _floatingDateTimer?.cancel();
+          _floatingDateTimer = Timer(const Duration(seconds: 2), () {
+            if (mounted) {
+              setState(() {
+                _showFloatingDate = false;
+              });
+            }
+          });
+        }
       }
     }
   }
@@ -131,6 +209,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       _hasMoreMessages = messages.length == _limit;
       _groupedItems = _buildGroupedItems();
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _updateFloatingDate();
+      }
+    });
   }
 
   Future<void> _loadMoreMessages() async {
@@ -153,6 +236,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       _filteredMessages = _allMessages;
       _isLoadingMore = false;
       _groupedItems = _buildGroupedItems();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _updateFloatingDate();
+      }
     });
   }
 
@@ -197,6 +285,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       setState(() {
         _highlightedMessageId = targetMessageId;
       });
+      _updateFloatingDate();
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -680,64 +769,101 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           ? const CustomLoadingIndicator()
           : _isSearching
               ? _buildSearchView()
-              : Column(
+              : Stack(
                   children: [
-                    Expanded(
-                      child: ListView.builder(
-                        controller: _scrollController,
-                        reverse: true,
-                        cacheExtent: 5000,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        itemCount: _groupedItems.length + (_isLoadingMore ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          if (_isLoadingMore && index == _groupedItems.length) {
-                            return const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                              child: Center(
-                                child: SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CustomLoadingIndicator(size: 24, strokeWidth: 2.5),
+                    Column(
+                      children: [
+                        Expanded(
+                          child: ListView.builder(
+                            controller: _scrollController,
+                            reverse: true,
+                            cacheExtent: 5000,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            itemCount: _groupedItems.length + (_isLoadingMore ? 1 : 0),
+                            itemBuilder: (context, index) {
+                              if (_isLoadingMore && index == _groupedItems.length) {
+                                return const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  child: Center(
+                                    child: SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CustomLoadingIndicator(size: 24, strokeWidth: 2.5),
+                                    ),
+                                  ),
+                                );
+                              }
+
+                              final item = _groupedItems[_groupedItems.length - 1 - index];
+                              
+                              if (item.isHeader) {
+                                return DateHeader(dateText: item.dateHeader!);
+                              } else {
+                                final isTarget = _highlightedMessageId == item.message!.id;
+                                return MessageBubble(
+                                  key: isTarget ? _highlightedKey : null,
+                                  message: item.message!,
+                                  meName: _currentThread.meName,
+                                  mediaDirPath: _mediaDirPath,
+                                  isHighlighted: isTarget,
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                        Container(
+                          width: double.infinity,
+                          color: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.lock_outline, size: 14, color: Colors.grey[600]),
+                              const SizedBox(width: 6),
+                              Text(
+                                "Mode Baca Saja (Read-Only)",
+                                style: TextStyle(
+                                  color: Colors.grey[600], 
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500
                                 ),
                               ),
-                            );
-                          }
-
-                          final item = _groupedItems[_groupedItems.length - 1 - index];
-                          
-                          if (item.isHeader) {
-                            return DateHeader(dateText: item.dateHeader!);
-                          } else {
-                            final isTarget = _highlightedMessageId == item.message!.id;
-                            return MessageBubble(
-                              key: isTarget ? _highlightedKey : null,
-                              message: item.message!,
-                              meName: _currentThread.meName,
-                              mediaDirPath: _mediaDirPath,
-                              isHighlighted: isTarget,
-                            );
-                          }
-                        },
-                      ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    Container(
-                      width: double.infinity,
-                      color: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.lock_outline, size: 14, color: Colors.grey[600]),
-                          const SizedBox(width: 6),
-                          Text(
-                            "Mode Baca Saja (Read-Only)",
-                            style: TextStyle(
-                              color: Colors.grey[600], 
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500
+                    Positioned(
+                      top: 12,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: AnimatedOpacity(
+                          opacity: _showFloatingDate ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 300),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xE0DFE9E7),
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              _floatingDate,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey[800],
+                              ),
                             ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ],
