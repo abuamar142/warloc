@@ -8,3 +8,7 @@
 -keep class io.flutter.view.** { *; }
 -keep class io.flutter.embedding.** { *; }
 -keep class io.flutter.plugins.** { *; }
+
+# Ignore missing Google Play Core classes referenced by Flutter's deferred components
+-dontwarn com.google.android.play.core.**
+
