@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../models/chat_thread.dart';
 import '../models/chat_message.dart';
+import '../utils/date_formatter.dart';
 import 'common/user_avatar.dart';
 
 class ChatThreadTile extends StatelessWidget {
@@ -22,19 +22,7 @@ class ChatThreadTile extends StatelessWidget {
 
   String _formatMessageTime(int? timestamp) {
     if (timestamp == null) return '';
-    final dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final messageDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
-
-    if (messageDate == today) {
-      return DateFormat('HH:mm').format(dateTime);
-    } else if (messageDate == yesterday) {
-      return 'Kemarin';
-    } else {
-      return DateFormat('dd/MM/yyyy').format(dateTime);
-    }
+    return DateFormatter.formatThreadTime(timestamp);
   }
 
   @override

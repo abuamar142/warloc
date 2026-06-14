@@ -39,4 +39,31 @@ class DateFormatter {
     if (date == yesterday) return 'Kemarin $timeStr';
     return '${dateTime.day} ${_monthsShort[dateTime.month - 1]} ${dateTime.year} $timeStr';
   }
+
+  /// Format timestamp for thread tile (e.g. "14:30", "Kemarin", "14/06/2026")
+  static String formatThreadTime(int timestamp) {
+    final dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final date = DateTime(dateTime.year, dateTime.month, dateTime.day);
+
+    if (date == today) {
+      final hourStr = dateTime.hour.toString().padLeft(2, '0');
+      final minuteStr = dateTime.minute.toString().padLeft(2, '0');
+      return '$hourStr:$minuteStr';
+    } else if (date == yesterday) {
+      return 'Kemarin';
+    } else {
+      final dayStr = dateTime.day.toString().padLeft(2, '0');
+      final monthStr = dateTime.month.toString().padLeft(2, '0');
+      return '$dayStr/$monthStr/${dateTime.year}';
+    }
+  }
+
+  /// Format timestamp as Month Year (e.g. "Juni 2026")
+  static String formatMonthYear(int timestamp) {
+    final dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+    return '${_monthsFull[dateTime.month - 1]} ${dateTime.year}';
+  }
 }

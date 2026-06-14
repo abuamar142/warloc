@@ -5,6 +5,7 @@ import '../database/database_helper.dart';
 import '../models/chat_thread.dart';
 import '../models/chat_message.dart';
 import '../theme/app_colors.dart';
+import '../utils/date_formatter.dart';
 import '../widgets/common/loading_indicator.dart';
 import '../widgets/common/empty_state_widget.dart';
 
@@ -55,7 +56,7 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
       final List<String> monthsOrder = [];
 
       for (final msg in filteredMessages) {
-        final key = _getIndonesianMonthYear(msg.timestamp);
+        final key = DateFormatter.formatMonthYear(msg.timestamp);
         if (!groups.containsKey(key)) {
           groups[key] = [];
           monthsOrder.add(key); // Preserves descending chronological order
@@ -76,15 +77,6 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
         SnackBar(content: Text("Gagal memuat media: $e"), backgroundColor: Colors.redAccent),
       );
     }
-  }
-
-  String _getIndonesianMonthYear(int timestamp) {
-    final dt = DateTime.fromMillisecondsSinceEpoch(timestamp);
-    final months = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-    ];
-    return '${months[dt.month - 1]} ${dt.year}';
   }
 
   void _openLightbox(ChatMessage msg) {
@@ -172,6 +164,7 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
                 ? Image.file(
                     file,
                     fit: BoxFit.cover,
+                    cacheWidth: 300,
                     errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.grey),
                   )
                 : const Center(
@@ -195,7 +188,11 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
               if (isExists)
                 Opacity(
                   opacity: 0.6,
-                  child: Image.file(file, fit: BoxFit.cover),
+                  child: Image.file(
+                    file,
+                    fit: BoxFit.cover,
+                    cacheWidth: 300,
+                  ),
                 ),
               const Center(
                 child: Icon(
@@ -280,18 +277,12 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
                   title: "Tidak ada berkas media",
                   description: "Foto, video, audio, dan dokumen akan muncul di sini.",
                 )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  itemCount: _sortedMonths.length,
-                  itemBuilder: (context, index) {
-                    final monthKey = _sortedMonths[index];
-                    final messages = _groupedMedia[monthKey] ?? [];
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8.0, bottom: 12.0),
+              : CustomScrollView(
+                  slivers: [
+                    for (final monthKey in _sortedMonths) ...[
+                      SliverPadding(
+                        padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 8),
+                        sliver: SliverToBoxAdapter(
                           child: Text(
                             monthKey,
                             style: TextStyle(
@@ -301,25 +292,30 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
                             ),
                           ),
                         ),
-                        GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: messages.length,
+                      ),
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        sliver: SliverGrid(
                           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 3,
                             crossAxisSpacing: 8,
                             mainAxisSpacing: 8,
                             childAspectRatio: 1.0,
                           ),
-                          itemBuilder: (context, gridIndex) {
-                            final msg = messages[gridIndex];
-                            return _buildMediaItem(msg);
-                          },
+                          delegate: SliverChildBuilderDelegate(
+                            (context, gridIndex) {
+                              final msg = (_groupedMedia[monthKey] ?? [])[gridIndex];
+                              return _buildMediaItem(msg);
+                            },
+                            childCount: (_groupedMedia[monthKey] ?? []).length,
+                          ),
                         ),
-                        const SizedBox(height: 16),
-                      ],
-                    );
-                  },
+                      ),
+                    ],
+                    const SliverToBoxAdapter(
+                      child: SizedBox(height: 16),
+                    ),
+                  ],
                 ),
     );
   }

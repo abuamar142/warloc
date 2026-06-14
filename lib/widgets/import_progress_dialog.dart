@@ -102,14 +102,12 @@ class _ImportProgressDialogState extends State<ImportProgressDialog> {
       final start = _importedCount + _skippedCount;
       final end = (start + batchSize > _total) ? _total : start + batchSize;
       
-      int localImported = 0;
-      int localSkipped = 0;
-
       final db = DatabaseHelper.instance;
+      final batchMessages = <ChatMessage>[];
 
       for (var i = start; i < end; i++) {
         final parsedMsg = widget.parsedData.messages[i];
-        final chatMsg = ChatMessage(
+        batchMessages.add(ChatMessage(
           threadId: threadId,
           timestamp: parsedMsg.timestamp.millisecondsSinceEpoch,
           sender: parsedMsg.sender,
@@ -117,19 +115,14 @@ class _ImportProgressDialogState extends State<ImportProgressDialog> {
           isSystem: parsedMsg.isSystem ? 1 : 0,
           mediaPath: parsedMsg.mediaPath,
           mediaType: parsedMsg.mediaType,
-        );
-
-        final insertedId = await db.insertMessageIfUnique(
-          chatMsg,
-          threadMeName: widget.existingThread?.meName ?? widget.meName,
-          importMeName: widget.meName,
-        );
-        if (insertedId != null) {
-          localImported++;
-        } else {
-          localSkipped++;
-        }
+        ));
       }
+
+      final (localImported, localSkipped) = await db.insertBatchIfUnique(
+        batchMessages,
+        threadMeName: widget.existingThread?.meName ?? widget.meName,
+        importMeName: widget.meName,
+      );
 
       if (mounted) {
         setState(() {

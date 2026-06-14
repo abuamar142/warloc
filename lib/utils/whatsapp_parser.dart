@@ -30,6 +30,16 @@ class WhatsAppParser {
     return parseLines(lines);
   }
 
+  static ParsedChatResult parseFileIsolate(String filePath) {
+    final file = File(filePath);
+    if (!file.existsSync()) {
+      throw Exception("File tidak ditemukan: $filePath");
+    }
+
+    final lines = file.readAsLinesSync(encoding: utf8);
+    return parseLines(lines);
+  }
+
   static ParsedChatResult parseLines(List<String> lines) {
     final List<ParsedMessageTemp> messages = [];
     final Set<String> senders = {};

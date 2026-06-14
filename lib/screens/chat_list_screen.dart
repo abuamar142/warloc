@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -108,9 +109,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
       final ParsedChatResult parsedResult;
       if (targetPathToParse.toLowerCase().endsWith('.json')) {
-        parsedResult = await TelegramParser.parseFile(targetPathToParse);
+        parsedResult = await compute(TelegramParser.parseFileIsolate, targetPathToParse);
       } else {
-        parsedResult = await WhatsAppParser.parseFile(targetPathToParse);
+        parsedResult = await compute(WhatsAppParser.parseFileIsolate, targetPathToParse);
       }
 
       if (mounted && isDialogShown) {

@@ -10,42 +10,86 @@ import '../models/chat_message.dart';
 class BackupHelper {
   /// Packs the SQLite database and all media files into a ZIP backup at [outputPath]
   static Future<void> createBackup(String outputPath) async {
+    final dbPath = p.join(await getDatabasesPath(), DatabaseHelper.dbName);
+    final appDir = await getApplicationDocumentsDirectory();
+
+    await compute(_createBackupIsolate, (
+      dbPath: dbPath,
+      appDirPath: appDir.path,
+      outputPath: outputPath,
+    ));
+  }
+
+  static void _createBackupIsolate(({String dbPath, String appDirPath, String outputPath}) params) {
     final encoder = ZipEncoder();
     final archive = Archive();
 
     // 1. Add database file
-    final dbPath = p.join(await getDatabasesPath(), DatabaseHelper.dbName);
-    final dbFile = File(dbPath);
-    if (await dbFile.exists()) {
-      final dbBytes = await dbFile.readAsBytes();
+    final dbFile = File(params.dbPath);
+    if (dbFile.existsSync()) {
+      final dbBytes = dbFile.readAsBytesSync();
       archive.addFile(ArchiveFile('warloc_chats.db', dbBytes.length, dbBytes));
     }
 
     // 2. Add media folder recursively
-    final appDir = await getApplicationDocumentsDirectory();
-    final mediaDir = Directory(p.join(appDir.path, 'media'));
-    if (await mediaDir.exists()) {
+    final mediaDir = Directory(p.join(params.appDirPath, 'media'));
+    if (mediaDir.existsSync()) {
       final List<FileSystemEntity> entities = mediaDir.listSync(recursive: true);
       for (final entity in entities) {
         if (entity is File) {
-          final relativePath = p.relative(entity.path, from: appDir.path);
-          final bytes = await entity.readAsBytes();
+          final relativePath = p.relative(entity.path, from: params.appDirPath);
+          final bytes = entity.readAsBytesSync();
           archive.addFile(ArchiveFile(relativePath, bytes.length, bytes));
         }
       }
     }
 
     final zipBytes = encoder.encode(archive);
-    final outFile = File(outputPath);
-    await outFile.create(recursive: true);
-    await outFile.writeAsBytes(zipBytes);
+    final outFile = File(params.outputPath);
+    outFile.createSync(recursive: true);
+    outFile.writeAsBytesSync(zipBytes);
   }
 
   /// Restores the backup by CLOSING the active database, DELETING all current data,
   /// and replacing it completely with the backup contents.
   static Future<bool> restoreBackupOverwrite(String backupPath) async {
     try {
-      final bytes = await File(backupPath).readAsBytes();
+      // Close the current database connection
+      await DatabaseHelper.instance.close();
+
+      final dbPath = p.join(await getDatabasesPath(), DatabaseHelper.dbName);
+      final appDir = await getApplicationDocumentsDirectory();
+
+      // Delete existing media directory to do a clean overwrite
+      final mediaDir = Directory(p.join(appDir.path, 'media'));
+      if (await mediaDir.exists()) {
+        await mediaDir.delete(recursive: true);
+      }
+
+      await deleteDatabase(dbPath);
+
+      final success = await compute(_restoreBackupIsolate, (
+        backupPath: backupPath,
+        dbPath: dbPath,
+        appDirPath: appDir.path,
+      ));
+
+      // Re-initialize/open the database
+      await DatabaseHelper.instance.database;
+      return success;
+    } catch (e) {
+      debugPrint("Gagal memulihkan cadangan (overwrite): $e");
+      // Attempt to re-open the database anyway to avoid leaving the app in a broken state
+      try {
+        await DatabaseHelper.instance.database;
+      } catch (_) {}
+      return false;
+    }
+  }
+
+  static bool _restoreBackupIsolate(({String backupPath, String dbPath, String appDirPath}) params) {
+    try {
+      final bytes = File(params.backupPath).readAsBytesSync();
       final archive = ZipDecoder().decodeBytes(bytes);
 
       // Verify backup contains the database
@@ -59,43 +103,23 @@ class BackupHelper {
 
       if (!hasDb) return false;
 
-      // Close the current database connection
-      await DatabaseHelper.instance.close();
-
-      final dbPath = p.join(await getDatabasesPath(), DatabaseHelper.dbName);
-      final appDir = await getApplicationDocumentsDirectory();
-
-      // Delete existing media directory to do a clean overwrite
-      final mediaDir = Directory(p.join(appDir.path, 'media'));
-      if (await mediaDir.exists()) {
-        await mediaDir.delete(recursive: true);
-      }
-
       // Write files from backup
       for (final file in archive) {
         final data = file.content as List<int>;
         if (file.name == 'warloc_chats.db') {
-          await deleteDatabase(dbPath);
-          final dbFile = File(dbPath);
-          await dbFile.create(recursive: true);
-          await dbFile.writeAsBytes(data);
+          final dbFile = File(params.dbPath);
+          dbFile.createSync(recursive: true);
+          dbFile.writeAsBytesSync(data);
         } else if (file.name.startsWith('media/')) {
-          final targetPath = p.join(appDir.path, file.name);
+          final targetPath = p.join(params.appDirPath, file.name);
           final mediaFile = File(targetPath);
-          await mediaFile.create(recursive: true);
-          await mediaFile.writeAsBytes(data);
+          mediaFile.createSync(recursive: true);
+          mediaFile.writeAsBytesSync(data);
         }
       }
-
-      // Re-initialize/open the database
-      await DatabaseHelper.instance.database;
       return true;
     } catch (e) {
-      debugPrint("Gagal memulihkan cadangan (overwrite): $e");
-      // Attempt to re-open the database anyway to avoid leaving the app in a broken state
-      try {
-        await DatabaseHelper.instance.database;
-      } catch (_) {}
+      debugPrint("Isolate restore error: $e");
       return false;
     }
   }
@@ -107,31 +131,21 @@ class BackupHelper {
     Directory? tempDir;
     Database? tempDb;
     try {
-      final bytes = await File(backupPath).readAsBytes();
-      final archive = ZipDecoder().decodeBytes(bytes);
-
-      // 1. Verify backup contains database
-      bool hasDb = false;
-      for (final file in archive) {
-        if (file.name == 'warloc_chats.db') {
-          hasDb = true;
-          break;
-        }
-      }
-
-      if (!hasDb) return false;
-
-      // 2. Extract backup contents to temporary cache folder
+      // Extract backup contents to temporary cache folder using isolate
       final systemTempDir = await getTemporaryDirectory();
       tempDir = Directory(p.join(systemTempDir.path, 'warloc_merge_${DateTime.now().millisecondsSinceEpoch}'));
       await tempDir.create(recursive: true);
 
-      for (final file in archive) {
-        final data = file.content as List<int>;
-        final targetPath = p.join(tempDir.path, file.name);
-        final fileEntity = File(targetPath);
-        await fileEntity.create(recursive: true);
-        await fileEntity.writeAsBytes(data);
+      final extractSuccess = await compute(_extractZipIsolate, (
+        backupPath: backupPath,
+        targetDir: tempDir.path,
+      ));
+
+      if (!extractSuccess) {
+        if (tempDir.existsSync()) {
+          await tempDir.delete(recursive: true);
+        }
+        return false;
       }
 
       // 3. Open temporary database connection
@@ -174,10 +188,10 @@ class BackupHelper {
           whereArgs: [oldThreadId],
         );
 
+        // Process message inserts in transactional batches for speed!
+        final List<ChatMessage> batchMessages = [];
         for (final msgMap in tempMessagesMap) {
-          // Construct message without preserving database ID so that target DB autoincrements it.
-          // Map it to our new target thread ID.
-          final ChatMessage msg = ChatMessage(
+          batchMessages.add(ChatMessage(
             threadId: targetThreadId,
             timestamp: msgMap['timestamp'] as int,
             sender: msgMap['sender'] as String,
@@ -185,20 +199,28 @@ class BackupHelper {
             isSystem: msgMap['isSystem'] as int,
             mediaPath: msgMap['mediaPath'] as String?,
             mediaType: msgMap['mediaType'] as String?,
+          ));
+        }
+
+        if (batchMessages.isNotEmpty) {
+          await dbHelper.insertBatchIfUnique(
+            batchMessages,
+            threadMeName: threadMeName,
+            importMeName: threadMeName, // Inside same thread context
           );
+        }
 
-          // Insert if unique
-          final insertedId = await dbHelper.insertMessageIfUnique(msg);
-
-          // Copy media if inserted successfully and the message has media
-          if (insertedId != null && msg.hasMedia) {
-            final sourceMediaFile = File(p.join(tempDir.path, 'media', oldThreadId.toString(), msg.mediaPath!));
+        // Copy media if the message has media
+        for (final msgMap in tempMessagesMap) {
+          final mediaPath = msgMap['mediaPath'] as String?;
+          if (mediaPath != null && mediaPath.isNotEmpty) {
+            final sourceMediaFile = File(p.join(tempDir.path, 'media', oldThreadId.toString(), mediaPath));
             if (await sourceMediaFile.exists()) {
               final targetMediaDir = Directory(p.join(appDir.path, 'media', targetThreadId.toString()));
               if (!await targetMediaDir.exists()) {
                 await targetMediaDir.create(recursive: true);
               }
-              final targetMediaPath = p.join(targetMediaDir.path, msg.mediaPath!);
+              final targetMediaPath = p.join(targetMediaDir.path, mediaPath);
               await sourceMediaFile.copy(targetMediaPath);
             }
           }
@@ -224,6 +246,35 @@ class BackupHelper {
           await tempDir.delete(recursive: true);
         } catch (_) {}
       }
+      return false;
+    }
+  }
+
+  static bool _extractZipIsolate(({String backupPath, String targetDir}) params) {
+    try {
+      final bytes = File(params.backupPath).readAsBytesSync();
+      final archive = ZipDecoder().decodeBytes(bytes);
+
+      bool hasDb = false;
+      for (final file in archive) {
+        if (file.name == 'warloc_chats.db') {
+          hasDb = true;
+          break;
+        }
+      }
+
+      if (!hasDb) return false;
+
+      for (final file in archive) {
+        final data = file.content as List<int>;
+        final targetPath = p.join(params.targetDir, file.name);
+        final fileEntity = File(targetPath);
+        fileEntity.createSync(recursive: true);
+        fileEntity.writeAsBytesSync(data);
+      }
+      return true;
+    } catch (e) {
+      debugPrint("Isolate extract zip error: $e");
       return false;
     }
   }

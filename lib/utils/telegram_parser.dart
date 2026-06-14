@@ -20,6 +20,21 @@ class TelegramParser {
     return parseMap(data);
   }
 
+  static ParsedChatResult parseFileIsolate(String filePath) {
+    final file = File(filePath);
+    if (!file.existsSync()) {
+      throw Exception("File tidak ditemukan: $filePath");
+    }
+
+    final content = file.readAsStringSync(encoding: utf8);
+    final data = jsonDecode(content);
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException("Format JSON Telegram tidak valid (bukan JSON object)");
+    }
+
+    return parseMap(data);
+  }
+
   static ParsedChatResult parseMap(Map<String, dynamic> data) {
     final List<ParsedMessageTemp> messages = [];
     final Set<String> senders = {};

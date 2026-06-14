@@ -148,10 +148,23 @@ class DatabaseHelper {
     String? importMeName,
   }) async {
     final db = await instance.database;
+    return await _insertIfUniqueInTxn(
+      db,
+      message,
+      threadMeName: threadMeName,
+      importMeName: importMeName,
+    );
+  }
 
+  Future<int?> _insertIfUniqueInTxn(
+    DatabaseExecutor txn,
+    ChatMessage message, {
+    String? threadMeName,
+    String? importMeName,
+  }) async {
     // Fallback to simple exact match if meNames are not provided
     if (threadMeName == null || importMeName == null) {
-      final duplicate = await db.query(
+      final duplicate = await txn.query(
         'messages',
         where: 'threadId = ? AND timestamp = ? AND sender = ? AND content = ?',
         whereArgs: [message.threadId, message.timestamp, message.sender, message.content],
@@ -161,16 +174,17 @@ class DatabaseHelper {
         // Duplicate found, skip
         return null;
       }
-      return await db.insert('messages', message.toMap());
+      return await txn.insert('messages', message.toMap());
     }
 
     final bool isMessageMe = message.sender == importMeName;
 
-    // Check if duplicate exists with same content in the same thread
-    final potentialDuplicates = await db.query(
+    // Check if duplicate exists with same content in the same thread (with LIMIT 10)
+    final potentialDuplicates = await txn.query(
       'messages',
       where: 'threadId = ? AND content = ?',
       whereArgs: [message.threadId, message.content],
+      limit: 10,
     );
 
     for (final dup in potentialDuplicates) {
@@ -188,7 +202,33 @@ class DatabaseHelper {
     }
 
     // No duplicate, insert
-    return await db.insert('messages', message.toMap());
+    return await txn.insert('messages', message.toMap());
+  }
+
+  Future<(int imported, int skipped)> insertBatchIfUnique(
+    List<ChatMessage> messages, {
+    String? threadMeName,
+    String? importMeName,
+  }) async {
+    final db = await instance.database;
+    int imported = 0;
+    int skipped = 0;
+    await db.transaction((txn) async {
+      for (final msg in messages) {
+        final id = await _insertIfUniqueInTxn(
+          txn,
+          msg,
+          threadMeName: threadMeName,
+          importMeName: importMeName,
+        );
+        if (id != null) {
+          imported++;
+        } else {
+          skipped++;
+        }
+      }
+    });
+    return (imported, skipped);
   }
 
   Future<List<ChatMessage>> getMessagesForThread(int threadId) async {
