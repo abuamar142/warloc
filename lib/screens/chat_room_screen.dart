@@ -6,6 +6,7 @@ import '../models/chat_thread.dart';
 import '../models/chat_message.dart';
 import '../widgets/date_header.dart';
 import '../widgets/message_bubble.dart';
+import '../widgets/manage_senders_dialog.dart';
 
 class ChatRoomScreen extends StatefulWidget {
   final ChatThread thread;
@@ -19,6 +20,7 @@ class ChatRoomScreen extends StatefulWidget {
 class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
+  late ChatThread _currentThread;
   List<ChatMessage> _allMessages = [];
   List<ChatMessage> _filteredMessages = [];
   String? _mediaDirPath;
@@ -33,6 +35,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   @override
   void initState() {
     super.initState();
+    _currentThread = widget.thread;
     _scrollController.addListener(_scrollListener);
     _loadMessages();
   }
@@ -65,10 +68,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       _hasMoreMessages = true;
     });
     final db = DatabaseHelper.instance;
-    final messages = await db.getMessagesForThreadPaginated(widget.thread.id!, _limit, 0);
+    final messages = await db.getMessagesForThreadPaginated(_currentThread.id!, _limit, 0);
     
     final appDir = await getApplicationDocumentsDirectory();
-    final mediaDirPath = p.join(appDir.path, 'media', widget.thread.id.toString());
+    final mediaDirPath = p.join(appDir.path, 'media', _currentThread.id.toString());
     
     setState(() {
       _allMessages = messages;
@@ -85,7 +88,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     final db = DatabaseHelper.instance;
 
     final newMessages = await db.getMessagesForThreadPaginated(
-      widget.thread.id!,
+      _currentThread.id!,
       _limit,
       _allMessages.length,
     );
@@ -181,46 +184,53 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 ),
                 onChanged: _filterMessages,
               )
-            : Row(
-                children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor: Colors.white24,
-                    child: Text(
-                      widget.thread.name.isNotEmpty 
-                          ? widget.thread.name.substring(0, 1).toUpperCase()
-                          : 'W',
-                      style: const TextStyle(
-                        color: Colors.white, 
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.thread.name,
+            : InkWell(
+                onTap: _showManageSendersDialog,
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.white24,
+                        child: Text(
+                          _currentThread.name.isNotEmpty 
+                              ? _currentThread.name.substring(0, 1).toUpperCase()
+                              : 'W',
                           style: const TextStyle(
-                            fontSize: 16, 
+                            color: Colors.white, 
                             fontWeight: FontWeight.bold,
-                            color: Colors.white
+                            fontSize: 16
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          "Saya: ${widget.thread.meName}",
-                          style: const TextStyle(fontSize: 11, color: Colors.white70),
-                          overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _currentThread.name,
+                              style: const TextStyle(
+                                fontSize: 16, 
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              "Saya: ${_currentThread.meName}",
+                              style: const TextStyle(fontSize: 11, color: Colors.white70),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
         actions: [
           if (_isSearching)
@@ -279,7 +289,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                       } else {
                         return MessageBubble(
                           message: item.message!,
-                          meName: widget.thread.meName,
+                          meName: _currentThread.meName,
                           mediaDirPath: _mediaDirPath,
                         );
                       }
@@ -313,6 +323,27 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   }
 
 
+  void _showManageSendersDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => ManageSendersDialog(
+        thread: _currentThread,
+        onSuccess: _refreshThreadDetails,
+      ),
+    );
+  }
+
+  Future<void> _refreshThreadDetails() async {
+    final db = DatabaseHelper.instance;
+    final updated = await db.getThread(_currentThread.id!);
+    if (updated != null && mounted) {
+      setState(() {
+        _currentThread = updated;
+      });
+      _loadMessages();
+    }
+  }
 }
 
 class _ChatRoomItem {

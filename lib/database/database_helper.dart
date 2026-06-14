@@ -241,6 +241,47 @@ class DatabaseHelper {
     return Sqflite.firstIntValue(result) ?? 0;
   }
 
+  Future<List<String>> getUniqueSendersForThread(int threadId) async {
+    final db = await instance.database;
+    final result = await db.rawQuery(
+      'SELECT DISTINCT sender FROM messages WHERE threadId = ? AND isSystem = 0',
+      [threadId],
+    );
+    return result.map((row) => row['sender'] as String).toList();
+  }
+
+  Future<void> mergeSenders({
+    required int threadId,
+    required String newThreadName,
+    required String newMeName,
+    required Map<String, String> senderMappings,
+  }) async {
+    final db = await instance.database;
+    await db.transaction((txn) async {
+      // 1. Update thread details in threads table
+      await txn.update(
+        'threads',
+        {'name': newThreadName, 'meName': newMeName},
+        where: 'id = ?',
+        whereArgs: [threadId],
+      );
+
+      // 2. Update message senders in messages table
+      for (final entry in senderMappings.entries) {
+        final oldSender = entry.key;
+        final newSender = entry.value;
+        if (oldSender != newSender) {
+          await txn.update(
+            'messages',
+            {'sender': newSender},
+            where: 'threadId = ? AND sender = ?',
+            whereArgs: [threadId, oldSender],
+          );
+        }
+      }
+    });
+  }
+
   Future close() async {
     final db = _database;
     if (db != null) {
