@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/chat_thread.dart';
 import '../models/chat_message.dart';
+import 'common/user_avatar.dart';
 
 class ChatThreadTile extends StatelessWidget {
   final ChatThread thread;
@@ -40,17 +41,10 @@ class ChatThreadTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      leading: CircleAvatar(
+      leading: UserAvatar(
+        name: thread.name,
         radius: 26,
-        backgroundColor: const Color(0xFFE6F5F3),
-        child: Text(
-          thread.name.isNotEmpty ? thread.name.substring(0, 1).toUpperCase() : '',
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF008069),
-          ),
-        ),
+        usePrimaryColor: true,
       ),
       title: Text(
         thread.name,

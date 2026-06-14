@@ -14,6 +14,9 @@ import '../widgets/chat_thread_tile.dart';
 import '../widgets/import_config_dialog.dart';
 import '../widgets/import_progress_dialog.dart';
 import '../utils/backup_helper.dart';
+import '../theme/app_colors.dart';
+import '../widgets/common/loading_indicator.dart';
+import '../widgets/common/empty_state_widget.dart';
 import 'chat_room_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
@@ -78,9 +81,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(color: Color(0xFF008069)),
-        ),
+        builder: (context) => const CustomLoadingIndicator(),
       );
       isDialogShown = true;
 
@@ -236,9 +237,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(color: Color(0xFF008069)),
-        ),
+        builder: (context) => const CustomLoadingIndicator(),
       );
       isDialogShown = true;
 
@@ -278,7 +277,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Cadangan data berhasil diekspor!"),
-            backgroundColor: Color(0xFF008069),
+            backgroundColor: AppColors.primary,
           ),
         );
       }
@@ -316,7 +315,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 title: const Row(
                   children: [
-                    Icon(Icons.restore, color: Color(0xFF008069)),
+                    Icon(Icons.restore, color: AppColors.primary),
                     SizedBox(width: 8),
                     Text(
                       "Pilih Mode Impor",
@@ -336,8 +335,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     ChoiceChip(
                       label: const Text("Gabung Chat (Rekomendasi)"),
                       selected: selectedMode == 'merge',
-                      selectedColor: const Color(0x20008069),
-                      checkmarkColor: const Color(0xFF008069),
+                      selectedColor: AppColors.primaryTransparent,
+                      checkmarkColor: AppColors.primary,
                       onSelected: (val) {
                         setStateDialog(() {
                           selectedMode = 'merge';
@@ -353,8 +352,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     ChoiceChip(
                       label: const Text("Timpa Semua Data"),
                       selected: selectedMode == 'overwrite',
-                      selectedColor: const Color(0x20008069),
-                      checkmarkColor: const Color(0xFF008069),
+                      selectedColor: AppColors.primaryTransparent,
+                      checkmarkColor: AppColors.primary,
                       onSelected: (val) {
                         setStateDialog(() {
                           selectedMode = 'overwrite';
@@ -376,7 +375,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   ElevatedButton(
                     onPressed: () => Navigator.pop(context, selectedMode),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF008069),
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
@@ -395,9 +394,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(color: Color(0xFF008069)),
-        ),
+        builder: (context) => const CustomLoadingIndicator(),
       );
       isDialogShown = true;
 
@@ -419,7 +416,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text("Cadangan data berhasil dipulihkan!"),
-              backgroundColor: Color(0xFF008069),
+              backgroundColor: AppColors.primary,
             ),
           );
         }
@@ -445,7 +442,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
           "Warloc",
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        backgroundColor: const Color(0xFF008069),
+        backgroundColor: AppColors.primary,
         elevation: 1,
         actions: [
           IconButton(
@@ -466,7 +463,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 value: 'export',
                 child: Row(
                   children: [
-                    Icon(Icons.backup, color: Color(0xFF008069)),
+                    Icon(Icons.backup, color: AppColors.primary),
                     SizedBox(width: 8),
                     Text("Ekspor Cadangan (.wlb)"),
                   ],
@@ -476,7 +473,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 value: 'import',
                 child: Row(
                   children: [
-                    Icon(Icons.restore, color: Color(0xFF008069)),
+                    Icon(Icons.restore, color: AppColors.primary),
                     SizedBox(width: 8),
                     Text("Impor Cadangan (.wlb)"),
                   ],
@@ -487,54 +484,26 @@ class _ChatListScreenState extends State<ChatListScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF008069)),
-            )
+          ? const CustomLoadingIndicator()
           : _threads.isEmpty
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.chat_bubble_outline,
-                      size: 80,
-                      color: Colors.grey[300],
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      "Belum ada chat terimpor",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Silakan klik tombol '+' di bawah untuk memilih file .txt ekspor WhatsApp Anda.",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey[500]),
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      onPressed: _pickAndImportFile,
-                      icon: const Icon(Icons.add),
-                      label: const Text("Impor Chat Sekarang"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF008069),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ],
+          ? EmptyStateWidget(
+              icon: Icons.chat_bubble_outline,
+              title: "Belum ada chat terimpor",
+              description: "Silakan klik tombol '+' di bawah untuk memilih file .txt ekspor WhatsApp Anda.",
+              actionButton: ElevatedButton.icon(
+                onPressed: _pickAndImportFile,
+                icon: const Icon(Icons.add),
+                label: const Text("Impor Chat Sekarang"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
             )
@@ -565,7 +534,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: _pickAndImportFile,
-        backgroundColor: const Color(0xFF00A884),
+        backgroundColor: AppColors.accent,
         foregroundColor: Colors.white,
         child: const Icon(Icons.add),
       ),

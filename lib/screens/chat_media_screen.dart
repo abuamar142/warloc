@@ -4,6 +4,9 @@ import 'package:path/path.dart' as p;
 import '../database/database_helper.dart';
 import '../models/chat_thread.dart';
 import '../models/chat_message.dart';
+import '../theme/app_colors.dart';
+import '../widgets/common/loading_indicator.dart';
+import '../widgets/common/empty_state_widget.dart';
 
 class ChatMediaScreen extends StatefulWidget {
   final ChatThread thread;
@@ -209,14 +212,14 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
       return Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: const Color(0xFFE7FFDB),
+          color: AppColors.audioBubbleBackground,
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: const Color(0x1F008069)),
+          border: Border.all(color: AppColors.primaryTransparent),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.mic, color: Color(0xFF008069), size: 28),
+            const Icon(Icons.mic, color: AppColors.primary, size: 28),
             const SizedBox(height: 4),
             Text(
               fileName,
@@ -258,7 +261,7 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F7),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF008069),
+        backgroundColor: AppColors.primary,
         title: const Text(
           "Media, Dokumen & Audio",
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18),
@@ -270,25 +273,12 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
         elevation: 1,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF008069)))
+          ? const CustomLoadingIndicator()
           : _mediaMessages.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.perm_media_outlined, size: 80, color: Colors.grey[300]),
-                      const SizedBox(height: 16),
-                      const Text(
-                        "Tidak ada berkas media",
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        "Foto, video, audio, dan dokumen akan muncul di sini.",
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                    ],
-                  ),
+              ? const EmptyStateWidget(
+                  icon: Icons.perm_media_outlined,
+                  title: "Tidak ada berkas media",
+                  description: "Foto, video, audio, dan dokumen akan muncul di sini.",
                 )
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),

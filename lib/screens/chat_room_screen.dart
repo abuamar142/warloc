@@ -8,6 +8,10 @@ import '../models/chat_message.dart';
 import '../widgets/date_header.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/manage_senders_dialog.dart';
+import '../theme/app_colors.dart';
+import '../widgets/common/loading_indicator.dart';
+import '../widgets/common/empty_state_widget.dart';
+import '../widgets/common/user_avatar.dart';
 import 'chat_media_screen.dart';
 
 class ChatRoomScreen extends StatefulWidget {
@@ -319,38 +323,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   }
 
   Widget _buildHistoryEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.search,
-            size: 64,
-            color: Colors.grey.withAlpha(76),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            "Cari Pesan",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 32.0),
-            child: Text(
-              "Masukkan minimal 3 karakter untuk mencari pesan di obrolan ini.",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return const EmptyStateWidget(
+      icon: Icons.search,
+      title: "Cari Pesan",
+      description: "Masukkan minimal 3 karakter untuk mencari pesan di obrolan ini.",
     );
   }
 
@@ -368,7 +344,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
-                  color: Color(0xFF008069),
+                  color: AppColors.primary,
                 ),
               ),
               TextButton(
@@ -414,44 +390,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   }
 
   Widget _buildSearchLoadingState() {
-    return const Center(
-      child: CircularProgressIndicator(color: Color(0xFF008069)),
-    );
+    return const CustomLoadingIndicator();
   }
 
   Widget _buildSearchEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.search_off,
-            size: 64,
-            color: Colors.grey.withAlpha(76),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            "Tidak Ada Hasil",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Text(
-              "Tidak ditemukan pesan yang cocok dengan \"${_searchController.text}\".",
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return EmptyStateWidget(
+      icon: Icons.search_off,
+      title: "Tidak Ada Hasil",
+      description: "Tidak ditemukan pesan yang cocok dengan \"${_searchController.text}\".",
     );
   }
 
@@ -467,10 +413,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               child: SizedBox(
                 width: 24,
                 height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: Color(0xFF008069),
-                ),
+                child: CustomLoadingIndicator(size: 24, strokeWidth: 2.5),
               ),
             ),
           );
@@ -510,16 +453,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircleAvatar(
+            UserAvatar(
+              name: message.sender,
               radius: 20,
-              backgroundColor: isMe ? const Color(0xFFDCF8C6) : const Color(0xFFE0E0E0),
-              child: Text(
-                message.sender.isNotEmpty ? message.sender.substring(0, 1).toUpperCase() : '?',
-                style: TextStyle(
-                  color: isMe ? const Color(0xFF075E54) : Colors.black87,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              isMe: isMe,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -579,7 +516,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       spans.add(TextSpan(
         text: text.substring(index, index + query.length),
         style: const TextStyle(
-          backgroundColor: Color(0xFFFFF9C4),
+          backgroundColor: AppColors.highlightBackground,
           color: Colors.black,
           fontWeight: FontWeight.bold,
         ),
@@ -656,9 +593,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     final groupedItems = _buildGroupedItems();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFEFEAE2),
+      backgroundColor: AppColors.chatBackground,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF008069),
+        backgroundColor: AppColors.primary,
         elevation: 1,
         titleSpacing: 0,
         leading: IconButton(
@@ -766,7 +703,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF008069)))
+          ? const CustomLoadingIndicator()
           : _isSearching
               ? _buildSearchView()
               : Column(
@@ -786,10 +723,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                 child: SizedBox(
                                   width: 24,
                                   height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: Color(0xFF008069),
-                                  ),
+                                  child: CustomLoadingIndicator(size: 24, strokeWidth: 2.5),
                                 ),
                               ),
                             );
@@ -837,7 +771,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       floatingActionButton: _messagesOffset > 0
           ? FloatingActionButton.extended(
               onPressed: _loadMessages,
-              backgroundColor: const Color(0xFF008069),
+              backgroundColor: AppColors.primary,
               icon: const Icon(Icons.arrow_downward, color: Colors.white),
               label: const Text("Pesan Terbaru", style: TextStyle(color: Colors.white)),
             )
@@ -870,7 +804,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           children: [
             CircleAvatar(
               radius: 28,
-              backgroundColor: const Color(0xFF008069),
+              backgroundColor: AppColors.primary,
               child: Text(
                 _currentThread.name.isNotEmpty
                     ? _currentThread.name.substring(0, 1).toUpperCase()
@@ -894,7 +828,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             ),
             const Divider(height: 24),
             ListTile(
-              leading: const Icon(Icons.people_outline, color: Color(0xFF008069)),
+              leading: const Icon(Icons.people_outline, color: AppColors.primary),
               title: const Text("Detail & Penggabungan Kontak"),
               subtitle: const Text("Kelola pengirim pesan dan perbarui database"),
               onTap: () {
@@ -903,7 +837,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_outlined, color: Color(0xFF008069)),
+              leading: const Icon(Icons.photo_library_outlined, color: AppColors.primary),
               title: const Text("Media Obrolan"),
               subtitle: const Text("Lihat berkas gambar, video, audio, dan dokumen"),
               onTap: () {
