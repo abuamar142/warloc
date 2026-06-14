@@ -171,6 +171,74 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     }
   }
 
+  Future<void> _showDatePickerAndJump() async {
+    final db = DatabaseHelper.instance;
+    final dbInstance = await db.database;
+    final minMax = await dbInstance.rawQuery(
+      'SELECT MIN(timestamp) as minTime, MAX(timestamp) as maxTime FROM messages WHERE threadId = ?',
+      [_currentThread.id],
+    );
+    
+    DateTime firstDate = DateTime.now().subtract(const Duration(days: 365 * 5));
+    DateTime lastDate = DateTime.now();
+    
+    if (minMax.isNotEmpty) {
+      final minTime = minMax.first['minTime'] as int?;
+      final maxTime = minMax.first['maxTime'] as int?;
+      if (minTime != null) firstDate = DateTime.fromMillisecondsSinceEpoch(minTime);
+      if (maxTime != null) lastDate = DateTime.fromMillisecondsSinceEpoch(maxTime);
+    }
+    
+    if (firstDate.isAfter(lastDate)) {
+      firstDate = lastDate.subtract(const Duration(days: 1));
+    }
+    
+    if (!mounted) return;
+    
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: lastDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: Colors.black87,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    
+    if (selectedDate == null) return;
+    
+    final startOfDay = DateTime(selectedDate.year, selectedDate.month, selectedDate.day).millisecondsSinceEpoch;
+    
+    final results = await dbInstance.query(
+      'messages',
+      where: 'threadId = ? AND timestamp >= ?',
+      whereArgs: [_currentThread.id, startOfDay],
+      orderBy: 'timestamp ASC',
+      limit: 1,
+    );
+    
+    if (results.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Tidak ada pesan pada atau setelah tanggal tersebut.")),
+        );
+      }
+      return;
+    }
+    
+    final targetMsg = ChatMessage.fromMap(results.first);
+    await _jumpToSearchResultMessage(targetMessageId: targetMsg.id!, timestamp: targetMsg.timestamp);
+  }
+
   void _searchScrollListener() {
     if (_searchScrollController.hasClients) {
       final maxScroll = _searchScrollController.position.maxScrollExtent;
@@ -797,7 +865,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                               final item = _groupedItems[_groupedItems.length - 1 - index];
                               
                               if (item.isHeader) {
-                                return DateHeader(dateText: item.dateHeader!);
+                                return GestureDetector(
+                                  onTap: _showDatePickerAndJump,
+                                  child: DateHeader(dateText: item.dateHeader!),
+                                );
                               } else {
                                 final isTarget = _highlightedMessageId == item.message!.id;
                                 return MessageBubble(
@@ -841,25 +912,28 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                         child: AnimatedOpacity(
                           opacity: _showFloatingDate ? 1.0 : 0.0,
                           duration: const Duration(milliseconds: 300),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: const Color(0xE0DFE9E7),
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
+                          child: GestureDetector(
+                            onTap: _showDatePickerAndJump,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xE0DFE9E7),
+                                borderRadius: BorderRadius.circular(8),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.05),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                _floatingDate,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[800],
                                 ),
-                              ],
-                            ),
-                            child: Text(
-                              _floatingDate,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey[800],
                               ),
                             ),
                           ),
@@ -934,6 +1008,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               onTap: () {
                 Navigator.pop(context); // Close sheet
                 _showManageSendersDialog();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.calendar_month_outlined, color: AppColors.primary),
+              title: const Text("Lompat ke Tanggal"),
+              subtitle: const Text("Lompat langsung ke tanggal chat tertentu"),
+              onTap: () {
+                Navigator.pop(context); // Close sheet
+                _showDatePickerAndJump();
               },
             ),
             ListTile(
