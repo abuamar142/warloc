@@ -129,21 +129,52 @@ class DatabaseHelper {
 
   // MESSAGE OPERATIONS
   /// Inserts a message if it doesn't already exist with the exact same threadId, timestamp, sender, and content.
+  /// If [threadMeName] and [importMeName] are provided, it performs a smart duplicate check comparing sender roles
+  /// ('me' vs 'other') and using a 60-second time tolerance.
   /// Returns the inserted ID if successful, or null if skipped (duplicate).
-  Future<int?> insertMessageIfUnique(ChatMessage message) async {
+  Future<int?> insertMessageIfUnique(
+    ChatMessage message, {
+    String? threadMeName,
+    String? importMeName,
+  }) async {
     final db = await instance.database;
 
-    // Check if duplicate exists
-    final duplicate = await db.query(
+    // Fallback to simple exact match if meNames are not provided
+    if (threadMeName == null || importMeName == null) {
+      final duplicate = await db.query(
+        'messages',
+        where: 'threadId = ? AND timestamp = ? AND sender = ? AND content = ?',
+        whereArgs: [message.threadId, message.timestamp, message.sender, message.content],
+        limit: 1,
+      );
+      if (duplicate.isNotEmpty) {
+        // Duplicate found, skip
+        return null;
+      }
+      return await db.insert('messages', message.toMap());
+    }
+
+    final bool isMessageMe = message.sender == importMeName;
+
+    // Check if duplicate exists with same content in the same thread
+    final potentialDuplicates = await db.query(
       'messages',
-      where: 'threadId = ? AND timestamp = ? AND sender = ? AND content = ?',
-      whereArgs: [message.threadId, message.timestamp, message.sender, message.content],
-      limit: 1,
+      where: 'threadId = ? AND content = ?',
+      whereArgs: [message.threadId, message.content],
     );
 
-    if (duplicate.isNotEmpty) {
-      // Duplicate found, skip
-      return null;
+    for (final dup in potentialDuplicates) {
+      final dupSender = dup['sender'] as String;
+      final dupTime = dup['timestamp'] as int;
+      final bool isDupMe = dupSender == threadMeName;
+
+      // Duplicate if roles match and timestamp is within 60 seconds (60000ms)
+      if (isMessageMe == isDupMe) {
+        if ((dupTime - message.timestamp).abs() < 60000) {
+          // Duplicate found, skip
+          return null;
+        }
+      }
     }
 
     // No duplicate, insert

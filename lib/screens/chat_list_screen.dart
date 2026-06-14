@@ -6,7 +6,9 @@ import 'package:path/path.dart' as p;
 import '../database/database_helper.dart';
 import '../models/chat_thread.dart';
 import '../models/chat_message.dart';
+import '../models/parsed_chat_result.dart';
 import '../utils/whatsapp_parser.dart';
+import '../utils/telegram_parser.dart';
 import '../utils/media_helper.dart';
 import '../widgets/chat_thread_tile.dart';
 import '../widgets/import_config_dialog.dart';
@@ -63,7 +65,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['txt', 'zip'],
+        allowedExtensions: ['txt', 'zip', 'json'],
       );
 
       if (result == null || result.files.single.path == null) return;
@@ -98,7 +100,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
             isDialogShown = false;
           }
           await tempDirFile.delete(recursive: true);
-          _showErrorSnackBar("Tidak ada file log chat (.txt) di dalam file zip.");
+          _showErrorSnackBar("Tidak ada file log chat (.txt atau .json) di dalam file zip.");
           return;
         }
         targetPathToParse = chatLogPath;
@@ -106,7 +108,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
         targetPathToParse = path;
       }
 
-      final parsedResult = await WhatsAppParser.parseFile(targetPathToParse);
+      final ParsedChatResult parsedResult;
+      if (targetPathToParse.toLowerCase().endsWith('.json')) {
+        parsedResult = await TelegramParser.parseFile(targetPathToParse);
+      } else {
+        parsedResult = await WhatsAppParser.parseFile(targetPathToParse);
+      }
 
       if (mounted && isDialogShown) {
         Navigator.pop(context); // Dismiss parsing loading
@@ -142,7 +149,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   void _showImportConfigDialog(
     String filePath,
-    WhatsAppParsedResult parsedData, {
+    ParsedChatResult parsedData, {
     String? tempDirPath,
   }) {
     showDialog(
@@ -172,7 +179,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
     String name,
     String meName,
     ChatThread? existingThread,
-    WhatsAppParsedResult parsedData, {
+    ParsedChatResult parsedData, {
     String? tempDirPath,
   }) {
     showDialog(

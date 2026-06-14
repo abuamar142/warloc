@@ -4,7 +4,7 @@ import 'package:path/path.dart' as p;
 import '../database/database_helper.dart';
 import '../models/chat_thread.dart';
 import '../models/chat_message.dart';
-import '../utils/whatsapp_parser.dart';
+import '../models/parsed_chat_result.dart';
 import '../utils/media_helper.dart';
 
 class ImportProgressDialog extends StatefulWidget {
@@ -12,7 +12,7 @@ class ImportProgressDialog extends StatefulWidget {
   final String name;
   final String meName;
   final ChatThread? existingThread;
-  final WhatsAppParsedResult parsedData;
+  final ParsedChatResult parsedData;
   final String? tempDirPath;
   final VoidCallback onComplete;
 
@@ -117,7 +117,11 @@ class _ImportProgressDialogState extends State<ImportProgressDialog> {
           mediaType: parsedMsg.mediaType,
         );
 
-        final insertedId = await db.insertMessageIfUnique(chatMsg);
+        final insertedId = await db.insertMessageIfUnique(
+          chatMsg,
+          threadMeName: widget.existingThread?.meName ?? widget.meName,
+          importMeName: widget.meName,
+        );
         if (insertedId != null) {
           localImported++;
         } else {

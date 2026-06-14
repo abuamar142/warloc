@@ -71,10 +71,12 @@ class MediaHelper {
         await outFile.create(recursive: true);
         await outFile.writeAsBytes(data);
         
-        // Find the main chat log file: e.g. "WhatsApp Chat with xxx.txt" or "_chat.txt" (iOS)
-        if (cleanFileName.toLowerCase().endsWith('.txt') && 
+        // Find the main chat log file: e.g. "WhatsApp Chat with xxx.txt" or Telegram "result.json"
+        final isChatLog = (cleanFileName.toLowerCase().endsWith('.txt') ||
+                           cleanFileName.toLowerCase().endsWith('.json')) && 
             !cleanFileName.startsWith('__MACOSX') &&
-            !cleanFileName.startsWith('.')) {
+            !cleanFileName.startsWith('.');
+        if (isChatLog) {
           chatLogPath = outFile.path;
         }
       }

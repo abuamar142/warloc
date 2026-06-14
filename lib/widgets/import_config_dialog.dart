@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import '../models/chat_thread.dart';
-import '../utils/whatsapp_parser.dart';
+import '../models/parsed_chat_result.dart';
 
 class ImportConfigDialog extends StatefulWidget {
   final String filePath;
-  final WhatsAppParsedResult parsedData;
+  final ParsedChatResult parsedData;
   final List<ChatThread> existingThreads;
   final String? tempDirPath;
   final Function(bool isNew, String name, String meName, ChatThread? existingThread) onConfirm;

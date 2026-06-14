@@ -1,39 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
+import '../models/parsed_chat_result.dart';
 import 'media_helper.dart';
-
-class WhatsAppParsedResult {
-  final List<WhatsAppMessageTemp> messages;
-  final List<String> uniqueSenders;
-
-  WhatsAppParsedResult({
-    required this.messages,
-    required this.uniqueSenders,
-  });
-}
-
-class WhatsAppMessageTemp {
-  final DateTime timestamp;
-  final String sender;
-  final String content;
-  final bool isSystem;
-  final String? mediaPath;
-  final String? mediaType;
-
-  WhatsAppMessageTemp({
-    required this.timestamp,
-    required this.sender,
-    required this.content,
-    required this.isSystem,
-    this.mediaPath,
-    this.mediaType,
-  });
-
-  @override
-  String toString() {
-    return '[$timestamp] $sender: $content';
-  }
-}
 
 class WhatsAppParser {
   // Matches WhatsApp date/time patterns:
@@ -52,7 +20,7 @@ class WhatsAppParser {
     caseSensitive: false
   );
 
-  static Future<WhatsAppParsedResult> parseFile(String filePath) async {
+  static Future<ParsedChatResult> parseFile(String filePath) async {
     final file = File(filePath);
     if (!await file.exists()) {
       throw Exception("File tidak ditemukan: $filePath");
@@ -62,11 +30,11 @@ class WhatsAppParser {
     return parseLines(lines);
   }
 
-  static WhatsAppParsedResult parseLines(List<String> lines) {
-    final List<WhatsAppMessageTemp> messages = [];
+  static ParsedChatResult parseLines(List<String> lines) {
+    final List<ParsedMessageTemp> messages = [];
     final Set<String> senders = {};
 
-    WhatsAppMessageTemp? currentMessage;
+    ParsedMessageTemp? currentMessage;
 
     for (var i = 0; i < lines.length; i++) {
       final line = lines[i];
@@ -112,7 +80,7 @@ class WhatsAppParser {
               mediaType = MediaHelper.getMediaTypeFromExtension(mediaPath);
             }
 
-            currentMessage = WhatsAppMessageTemp(
+            currentMessage = ParsedMessageTemp(
               timestamp: timestamp,
               sender: sender,
               content: content,
@@ -122,7 +90,7 @@ class WhatsAppParser {
             );
           } else {
             // Empty sender means system message
-            currentMessage = WhatsAppMessageTemp(
+            currentMessage = ParsedMessageTemp(
               timestamp: timestamp,
               sender: '',
               content: rest,
@@ -131,7 +99,7 @@ class WhatsAppParser {
           }
         } else {
           // No ": " found, it's a system message
-          currentMessage = WhatsAppMessageTemp(
+          currentMessage = ParsedMessageTemp(
             timestamp: timestamp,
             sender: '',
             content: rest,
@@ -142,7 +110,7 @@ class WhatsAppParser {
         // This is a continuation of the previous message (multi-line)
         if (currentMessage != null) {
           // Append the line to the previous message content
-          currentMessage = WhatsAppMessageTemp(
+          currentMessage = ParsedMessageTemp(
             timestamp: currentMessage.timestamp,
             sender: currentMessage.sender,
             content: '${currentMessage.content}\n$line',
@@ -153,7 +121,7 @@ class WhatsAppParser {
         } else {
           // Trash line before any valid chat message, skip or make it a system message
           if (line.trim().isNotEmpty) {
-            currentMessage = WhatsAppMessageTemp(
+            currentMessage = ParsedMessageTemp(
               timestamp: DateTime.now(),
               sender: '',
               content: line,
@@ -169,7 +137,7 @@ class WhatsAppParser {
       messages.add(currentMessage);
     }
 
-    return WhatsAppParsedResult(
+    return ParsedChatResult(
       messages: messages,
       uniqueSenders: senders.toList()..sort(),
     );
