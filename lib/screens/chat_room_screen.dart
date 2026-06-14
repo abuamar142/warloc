@@ -12,6 +12,7 @@ import '../theme/app_colors.dart';
 import '../widgets/common/loading_indicator.dart';
 import '../widgets/common/empty_state_widget.dart';
 import '../widgets/common/user_avatar.dart';
+import '../utils/date_formatter.dart';
 import 'chat_media_screen.dart';
 
 class ChatRoomScreen extends StatefulWidget {
@@ -39,6 +40,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   static const int _limit = 100;
   int _messagesOffset = 0;
 
+  // Cached state
+  List<_ChatRoomItem> _groupedItems = [];
+  String? _appDocDirPath;
+
   // Search states
   static final List<String> _searchHistory = [];
   final ScrollController _searchScrollController = ScrollController();
@@ -57,6 +62,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     _currentThread = widget.thread;
     _scrollController.addListener(_scrollListener);
     _searchScrollController.addListener(_searchScrollListener);
+    // Cache app directory path once — avoid repeated async calls
+    getApplicationDocumentsDirectory().then((dir) {
+      if (mounted) _appDocDirPath = dir.path;
+    });
     _loadMessages();
   }
 
@@ -110,15 +119,17 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     final db = DatabaseHelper.instance;
     final messages = await db.getMessagesForThreadPaginated(_currentThread.id!, _limit, 0);
     
-    final appDir = await getApplicationDocumentsDirectory();
-    final mediaDirPath = p.join(appDir.path, 'media', _currentThread.id.toString());
-    
+    final mediaDirPath = _appDocDirPath != null
+        ? p.join(_appDocDirPath!, 'media', _currentThread.id.toString())
+        : p.join((await getApplicationDocumentsDirectory()).path, 'media', _currentThread.id.toString());
+
     setState(() {
       _allMessages = messages;
       _filteredMessages = messages;
       _mediaDirPath = mediaDirPath;
       _isLoading = false;
       _hasMoreMessages = messages.length == _limit;
+      _groupedItems = _buildGroupedItems();
     });
   }
 
@@ -141,6 +152,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       _allMessages.insertAll(0, newMessages);
       _filteredMessages = _allMessages;
       _isLoadingMore = false;
+      _groupedItems = _buildGroupedItems();
     });
   }
 
@@ -164,8 +176,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       _messagesOffset,
     );
 
-    final appDir = await getApplicationDocumentsDirectory();
-    final mediaDirPath = p.join(appDir.path, 'media', _currentThread.id.toString());
+    final mediaDirPath = _appDocDirPath != null
+        ? p.join(_appDocDirPath!, 'media', _currentThread.id.toString())
+        : p.join((await getApplicationDocumentsDirectory()).path, 'media', _currentThread.id.toString());
 
     final totalInDb = await db.getMessageCountForThread(_currentThread.id!);
 
@@ -175,6 +188,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       _mediaDirPath = mediaDirPath;
       _isLoading = false;
       _hasMoreMessages = (_messagesOffset + _allMessages.length) < totalInDb;
+      _groupedItems = _buildGroupedItems();
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -286,25 +300,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
 
 
-  String _formatDateHeader(int timestamp) {
-    final dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final messageDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
-
-    if (messageDate == today) {
-      return 'Hari ini';
-    } else if (messageDate == yesterday) {
-      return 'Kemarin';
-    } else {
-      final months = [
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-      ];
-      return '${dateTime.day} ${months[dateTime.month - 1]} ${dateTime.year}';
-    }
-  }
+  String _formatDateHeader(int timestamp) =>
+      DateFormatter.formatDateHeader(timestamp);
 
   List<_ChatRoomItem> _buildGroupedItems() {
     final List<_ChatRoomItem> items = [];
@@ -535,29 +532,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
   }
 
-  String _formatSearchResultTime(int timestamp) {
-    final dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final date = DateTime(dateTime.year, dateTime.month, dateTime.day);
-
-    final hour = dateTime.hour.toString().padLeft(2, '0');
-    final minute = dateTime.minute.toString().padLeft(2, '0');
-    final timeStr = '$hour:$minute';
-
-    if (date == today) {
-      return 'Hari ini $timeStr';
-    } else if (date == yesterday) {
-      return 'Kemarin $timeStr';
-    } else {
-      final months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-        'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
-      ];
-      return '${dateTime.day} ${months[dateTime.month - 1]} ${dateTime.year} $timeStr';
-    }
-  }
+  String _formatSearchResultTime(int timestamp) =>
+      DateFormatter.formatSearchResultTime(timestamp);
 
   Widget _buildSearchView() {
     final query = _searchController.text.trim();
@@ -590,8 +566,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final groupedItems = _buildGroupedItems();
-
     return Scaffold(
       backgroundColor: AppColors.chatBackground,
       appBar: AppBar(
@@ -714,9 +688,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                         reverse: true,
                         cacheExtent: 5000,
                         padding: const EdgeInsets.symmetric(vertical: 8),
-                        itemCount: groupedItems.length + (_isLoadingMore ? 1 : 0),
+                        itemCount: _groupedItems.length + (_isLoadingMore ? 1 : 0),
                         itemBuilder: (context, index) {
-                          if (_isLoadingMore && index == groupedItems.length) {
+                          if (_isLoadingMore && index == _groupedItems.length) {
                             return const Padding(
                               padding: EdgeInsets.symmetric(vertical: 12),
                               child: Center(
@@ -729,7 +703,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                             );
                           }
 
-                          final item = groupedItems[groupedItems.length - 1 - index];
+                          final item = _groupedItems[_groupedItems.length - 1 - index];
                           
                           if (item.isHeader) {
                             return DateHeader(dateText: item.dateHeader!);

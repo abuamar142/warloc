@@ -6,6 +6,8 @@ import '../models/chat_thread.dart';
 import '../models/chat_message.dart';
 import '../models/parsed_chat_result.dart';
 import '../utils/media_helper.dart';
+import 'common/app_dialog.dart';
+import 'common/app_button.dart';
 
 class ImportProgressDialog extends StatefulWidget {
   final bool isNew;
@@ -159,9 +161,8 @@ class _ImportProgressDialogState extends State<ImportProgressDialog> {
     // Show completion summary
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text("Import Selesai", style: TextStyle(fontWeight: FontWeight.bold)),
+      builder: (context) => AppDialog(
+        title: "Import Selesai",
         content: Text(
           "Pesan berhasil diproses:\n"
           "• Diimpor (Baru): $_importedCount\n"
@@ -170,13 +171,9 @@ class _ImportProgressDialogState extends State<ImportProgressDialog> {
           style: const TextStyle(fontSize: 16),
         ),
         actions: [
-          ElevatedButton(
+          AppButton(
+            label: "OK",
             onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF008069),
-              foregroundColor: Colors.white,
-            ),
-            child: const Text("OK"),
           ),
         ],
       ),
@@ -185,9 +182,8 @@ class _ImportProgressDialogState extends State<ImportProgressDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: const Text("Mengimpor Chat...", style: TextStyle(fontWeight: FontWeight.bold)),
+    return AppDialog(
+      title: "Mengimpor Chat...",
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -208,6 +204,7 @@ class _ImportProgressDialogState extends State<ImportProgressDialog> {
           ),
         ],
       ),
+      actions: const [],
     );
   }
 }

@@ -28,7 +28,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onConfigure: _onConfigure,
       onUpgrade: _onUpgrade,
@@ -43,6 +43,14 @@ class DatabaseHelper {
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE messages ADD COLUMN mediaPath TEXT');
       await db.execute('ALTER TABLE messages ADD COLUMN mediaType TEXT');
+    }
+    if (oldVersion < 3) {
+      // Add index to speed up content-based duplicate checks during import
+      try {
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_messages_content ON messages (threadId, content)'
+        );
+      } catch (_) {}
     }
   }
 
@@ -72,13 +80,15 @@ class DatabaseHelper {
     ''');
 
     // Indexes for fast lookup during deduplication and viewing
-    await db.execute('''
-      CREATE INDEX idx_messages_thread_time ON messages (threadId, timestamp)
-    ''');
-    
-    await db.execute('''
-      CREATE INDEX idx_messages_lookup ON messages (threadId, timestamp, sender, content)
-    ''');
+    await db.execute(
+      'CREATE INDEX idx_messages_thread_time ON messages (threadId, timestamp)'
+    );
+    await db.execute(
+      'CREATE INDEX idx_messages_lookup ON messages (threadId, timestamp, sender, content)'
+    );
+    await db.execute(
+      'CREATE INDEX idx_messages_content ON messages (threadId, content)'
+    );
   }
 
   // THREAD OPERATIONS
@@ -230,6 +240,36 @@ class DatabaseHelper {
       return ChatMessage.fromMap(result.first);
     }
     return null;
+  }
+
+  /// Returns a map of threadId -> last ChatMessage for ALL threads in one query.
+  Future<Map<int, ChatMessage?>> getAllLastMessages() async {
+    final db = await instance.database;
+    final result = await db.rawQuery('''
+      SELECT m.* FROM messages m
+      INNER JOIN (
+        SELECT threadId, MAX(id) as maxId FROM messages GROUP BY threadId
+      ) latest ON m.id = latest.maxId
+    ''');
+    final Map<int, ChatMessage?> map = {};
+    for (final row in result) {
+      final msg = ChatMessage.fromMap(row);
+      map[msg.threadId] = msg;
+    }
+    return map;
+  }
+
+  /// Returns a map of threadId -> message count for ALL threads in one query.
+  Future<Map<int, int>> getAllMessageCounts() async {
+    final db = await instance.database;
+    final result = await db.rawQuery(
+      'SELECT threadId, COUNT(*) as count FROM messages GROUP BY threadId'
+    );
+    final Map<int, int> map = {};
+    for (final row in result) {
+      map[row['threadId'] as int] = row['count'] as int;
+    }
+    return map;
   }
 
   Future<int> getMessageCountForThread(int threadId) async {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
@@ -51,6 +52,7 @@ class MediaBubbleRenderer extends StatelessWidget {
         fit: BoxFit.cover,
         width: double.infinity,
         height: 200,
+        cacheWidth: 600,
         errorBuilder: (context, error, stackTrace) {
           return _buildErrorPlaceholder("Gagal memuat gambar");
         },
@@ -370,6 +372,11 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
   bool _isPlaying = false;
   bool _isInitialized = false;
 
+  // Keep subscriptions to cancel them in dispose() — prevents memory leaks
+  StreamSubscription? _durationSub;
+  StreamSubscription? _positionSub;
+  StreamSubscription? _stateSub;
+
   @override
   void initState() {
     super.initState();
@@ -381,28 +388,16 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
       final player = AudioPlayer();
       _player = player;
 
-      player.onDurationChanged.listen((d) {
-        if (mounted) {
-          setState(() {
-            _duration = d;
-          });
-        }
+      _durationSub = player.onDurationChanged.listen((d) {
+        if (mounted) setState(() => _duration = d);
       });
 
-      player.onPositionChanged.listen((p) {
-        if (mounted) {
-          setState(() {
-            _position = p;
-          });
-        }
+      _positionSub = player.onPositionChanged.listen((p) {
+        if (mounted) setState(() => _position = p);
       });
 
-      player.onPlayerStateChanged.listen((state) {
-        if (mounted) {
-          setState(() {
-            _isPlaying = state == PlayerState.playing;
-          });
-        }
+      _stateSub = player.onPlayerStateChanged.listen((state) {
+        if (mounted) setState(() => _isPlaying = state == PlayerState.playing);
       });
 
       await player.setSource(DeviceFileSource(widget.filePath));
@@ -414,6 +409,9 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
 
   @override
   void dispose() {
+    _durationSub?.cancel();
+    _positionSub?.cancel();
+    _stateSub?.cancel();
     _player?.dispose();
     super.dispose();
   }
@@ -639,12 +637,8 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
           _controller.play();
         }
       });
-
-    _controller.addListener(() {
-      if (mounted) {
-        setState(() {});
-      }
-    });
+    // NOTE: No addListener here — we use ValueListenableBuilder in build()
+    // to avoid setState being called on every video frame (60fps).
   }
 
   @override
@@ -679,8 +673,6 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    final isInitialized = _controller.value.isInitialized;
-
     return Scaffold(
       backgroundColor: Colors.black,
       body: GestureDetector(
@@ -689,14 +681,18 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
             _showControls = !_showControls;
           });
         },
-        child: Stack(
+        child: ValueListenableBuilder<VideoPlayerValue>(
+          valueListenable: _controller,
+          builder: (context, videoValue, child) {
+            final isInitialized = videoValue.isInitialized;
+            return Stack(
           alignment: Alignment.center,
           children: [
             // Video display
             if (isInitialized)
               Center(
                 child: AspectRatio(
-                  aspectRatio: _controller.value.aspectRatio,
+                  aspectRatio: videoValue.aspectRatio,
                   child: VideoPlayer(_controller),
                 ),
               )
@@ -774,10 +770,10 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
                         ),
                         child: Slider(
                           min: 0.0,
-                          max: _controller.value.duration.inMilliseconds.toDouble(),
-                          value: _controller.value.position.inMilliseconds.toDouble().clamp(
+                          max: videoValue.duration.inMilliseconds.toDouble(),
+                          value: videoValue.position.inMilliseconds.toDouble().clamp(
                             0.0,
-                            _controller.value.duration.inMilliseconds.toDouble(),
+                            videoValue.duration.inMilliseconds.toDouble(),
                           ),
                           onChanged: (val) {
                             _controller.seekTo(Duration(milliseconds: val.toInt()));
@@ -792,7 +788,7 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
                             children: [
                               IconButton(
                                 icon: Icon(
-                                  _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                                  videoValue.isPlaying ? Icons.pause : Icons.play_arrow,
                                   color: Colors.white,
                                   size: 28,
                                 ),
@@ -801,7 +797,7 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
                               const SizedBox(width: 8),
                               // Duration display
                               Text(
-                                "${_formatDuration(_controller.value.position)} / ${_formatDuration(_controller.value.duration)}",
+                                "${_formatDuration(videoValue.position)} / ${_formatDuration(videoValue.duration)}",
                                 style: const TextStyle(color: Colors.white70, fontSize: 13),
                               ),
                             ],
@@ -823,7 +819,7 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
               ),
 
             // Big Play/Pause icon in the center if paused
-            if (_showControls && isInitialized && !_controller.value.isPlaying)
+            if (_showControls && isInitialized && !videoValue.isPlaying)
               GestureDetector(
                 onTap: _togglePlay,
                 child: Container(
@@ -840,6 +836,8 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
                 ),
               ),
           ],
+        );
+          },
         ),
       ),
     );

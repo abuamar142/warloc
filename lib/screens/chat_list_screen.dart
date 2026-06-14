@@ -17,6 +17,9 @@ import '../utils/backup_helper.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/loading_indicator.dart';
 import '../widgets/common/empty_state_widget.dart';
+import '../widgets/common/app_dialog.dart';
+import '../widgets/common/app_choice_chip.dart';
+import '../widgets/common/app_button.dart';
 import 'chat_room_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
@@ -41,24 +44,18 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Future<void> _loadThreads() async {
     setState(() => _isLoading = true);
     final db = DatabaseHelper.instance;
-    final threads = await db.getThreads();
 
-    final Map<int, ChatMessage?> lastMessages = {};
-    final Map<int, int> messageCounts = {};
-
-    for (final thread in threads) {
-      if (thread.id != null) {
-        lastMessages[thread.id!] = await db.getLastMessageForThread(thread.id!);
-        messageCounts[thread.id!] = await db.getMessageCountForThread(
-          thread.id!,
-        );
-      }
-    }
+    // 3 queries total instead of N×2+1 — eliminates N+1 problem
+    final results = await Future.wait([
+      db.getThreads(),
+      db.getAllLastMessages(),
+      db.getAllMessageCounts(),
+    ]);
 
     setState(() {
-      _threads = threads;
-      _lastMessages = lastMessages;
-      _messageCounts = messageCounts;
+      _threads = results[0] as List<ChatThread>;
+      _lastMessages = results[1] as Map<int, ChatMessage?>;
+      _messageCounts = results[2] as Map<int, int>;
       _isLoading = false;
     });
   }
@@ -201,15 +198,16 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Future<void> _deleteThread(ChatThread thread) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Hapus Chat"),
+      builder: (context) => AppDialog(
+        title: "Hapus Chat",
         content: Text(
           "Apakah Anda yakin ingin menghapus semua riwayat chat dengan \"${thread.name}\"?",
         ),
         actions: [
-          TextButton(
+          AppButton(
+            label: "Batal",
             onPressed: () => Navigator.pop(context, false),
-            child: const Text("Batal", style: TextStyle(color: Colors.grey)),
+            variant: AppButtonVariant.secondary,
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
@@ -311,78 +309,62 @@ class _ChatListScreenState extends State<ChatListScreen> {
           String selectedMode = 'merge'; // Default to merge
           return StatefulBuilder(
             builder: (context, setStateDialog) {
-              return AlertDialog(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                title: const Row(
-                  children: [
-                    Icon(Icons.restore, color: AppColors.primary),
-                    SizedBox(width: 8),
-                    Text(
-                      "Pilih Mode Impor",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                    ),
-                  ],
-                ),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Bagaimana Anda ingin memulihkan cadangan data ini?",
-                      style: TextStyle(fontSize: 14),
-                    ),
-                    const SizedBox(height: 16),
-                    ChoiceChip(
-                      label: const Text("Gabung Chat (Rekomendasi)"),
-                      selected: selectedMode == 'merge',
-                      selectedColor: AppColors.primaryTransparent,
-                      checkmarkColor: AppColors.primary,
-                      onSelected: (val) {
-                        setStateDialog(() {
-                          selectedMode = 'merge';
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      "Menggabungkan riwayat chat tanpa menghapus pesan yang ada. Pesan duplikat akan dilewati secara otomatis.",
-                      style: TextStyle(fontSize: 11, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 16),
-                    ChoiceChip(
-                      label: const Text("Timpa Semua Data"),
-                      selected: selectedMode == 'overwrite',
-                      selectedColor: AppColors.primaryTransparent,
-                      checkmarkColor: AppColors.primary,
-                      onSelected: (val) {
-                        setStateDialog(() {
-                          selectedMode = 'overwrite';
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      "PERINGATAN: Menghapus semua chat dan media saat ini, lalu menggantinya secara total dengan isi cadangan.",
-                      style: TextStyle(fontSize: 11, color: Colors.redAccent),
-                    ),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("Batal", style: TextStyle(color: Colors.grey)),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(context, selectedMode),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    child: const Text("Impor"),
-                  ),
-                ],
-              );
+              return AppDialog(
+        icon: Icons.restore,
+        iconColor: AppColors.primary,
+        title: "Pilih Mode Impor",
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Bagaimana Anda ingin memulihkan cadangan data ini?",
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            AppChoiceChip(
+              label: const Text("Gabung Chat (Rekomendasi)"),
+              selected: selectedMode == 'merge',
+              onSelected: (val) {
+                setStateDialog(() {
+                  selectedMode = 'merge';
+                });
+              },
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              "Menggabungkan riwayat chat tanpa menghapus pesan yang ada. Pesan duplikat akan dilewati secara otomatis.",
+              style: TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            AppChoiceChip(
+              label: const Text("Timpa Semua Data"),
+              selected: selectedMode == 'overwrite',
+              onSelected: (val) {
+                setStateDialog(() {
+                  selectedMode = 'overwrite';
+                });
+              },
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              "PERINGATAN: Menghapus semua chat dan media saat ini, lalu menggantinya secara total dengan isi cadangan.",
+              style: TextStyle(fontSize: 11, color: Colors.redAccent),
+            ),
+          ],
+        ),
+        actions: [
+          AppButton(
+            label: "Batal",
+            onPressed: () => Navigator.pop(context),
+            variant: AppButtonVariant.secondary,
+          ),
+          AppButton(
+            label: "Impor",
+            onPressed: () => Navigator.pop(context, selectedMode),
+          ),
+        ],
+      );
             },
           );
         },
@@ -490,21 +472,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
               icon: Icons.chat_bubble_outline,
               title: "Belum ada chat terimpor",
               description: "Silakan klik tombol '+' di bawah untuk memilih file .txt ekspor WhatsApp Anda.",
-              actionButton: ElevatedButton.icon(
+              actionButton: AppButton(
                 onPressed: _pickAndImportFile,
-                icon: const Icon(Icons.add),
-                label: const Text("Impor Chat Sekarang"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
+                icon: Icons.add,
+                label: "Impor Chat Sekarang",
               ),
             )
           : ListView.separated(

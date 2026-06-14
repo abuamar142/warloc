@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 import '../models/chat_thread.dart';
+import 'common/app_dialog.dart';
+import 'common/app_text_field.dart';
+import 'common/app_choice_chip.dart';
+import 'common/app_button.dart';
+import 'common/loading_indicator.dart';
 
 class ManageSendersDialog extends StatefulWidget {
   final ChatThread thread;
@@ -80,35 +85,23 @@ class _ManageSendersDialogState extends State<ManageSendersDialog> {
     // 1. Show confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange),
-            SizedBox(width: 8),
-            Text(
-              "Konfirmasi Penggabungan",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-          ],
-        ),
+      builder: (context) => AppDialog(
+        icon: Icons.warning_amber_rounded,
+        iconColor: Colors.orange,
+        title: "Konfirmasi Penggabungan",
         content: const Text(
           "Apakah Anda yakin ingin melakukan penggabungan ini? Perubahan pada nama pengirim dan pesan akan diterapkan secara permanen ke database.",
           style: TextStyle(fontSize: 14),
         ),
         actions: [
-          TextButton(
+          AppButton(
+            label: "Batal",
             onPressed: () => Navigator.pop(context, false),
-            child: const Text("Batal", style: TextStyle(color: Colors.grey)),
+            variant: AppButtonVariant.secondary,
           ),
-          ElevatedButton(
+          AppButton(
+            label: "Ya, Gabungkan",
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF008069),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text("Ya, Gabungkan"),
           ),
         ],
       ),
@@ -150,24 +143,14 @@ class _ManageSendersDialogState extends State<ManageSendersDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: const Row(
-        children: [
-          Icon(Icons.people_outline, color: Color(0xFF008069)),
-          SizedBox(width: 8),
-          Text(
-            "Detail Chat & Penggabungan",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-        ],
-      ),
+    return AppDialog(
+      icon: Icons.people_outline,
+      iconColor: const Color(0xFF008069),
+      title: "Detail Chat & Penggabungan",
       content: _isLoading
           ? const SizedBox(
               height: 200,
-              child: Center(
-                child: CircularProgressIndicator(color: Color(0xFF008069)),
-              ),
+              child: CustomLoadingIndicator(),
             )
           : SingleChildScrollView(
               child: Form(
@@ -182,17 +165,9 @@ class _ManageSendersDialogState extends State<ManageSendersDialog> {
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                     ),
                     const SizedBox(height: 6),
-                    TextFormField(
+                    AppTextField(
                       controller: _threadNameController,
-                      decoration: InputDecoration(
-                        hintText: "Masukkan nama kontak",
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: const BorderSide(color: Color(0xFF008069), width: 2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
+                      hintText: "Masukkan nama kontak",
                       validator: (val) {
                         if (val == null || val.trim().isEmpty) {
                           return "Nama kontak tidak boleh kosong";
@@ -208,17 +183,9 @@ class _ManageSendersDialogState extends State<ManageSendersDialog> {
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                     ),
                     const SizedBox(height: 6),
-                    TextFormField(
+                    AppTextField(
                       controller: _meNameController,
-                      decoration: InputDecoration(
-                        hintText: "Masukkan nama Anda",
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: const BorderSide(color: Color(0xFF008069), width: 2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
+                      hintText: "Masukkan nama Anda",
                       validator: (val) {
                         if (val == null || val.trim().isEmpty) {
                           return "Nama saya tidak boleh kosong";
@@ -269,13 +236,11 @@ class _ManageSendersDialogState extends State<ManageSendersDialog> {
                                     Row(
                                       children: [
                                         Expanded(
-                                          child: ChoiceChip(
+                                          child: AppChoiceChip(
                                             label: const Center(
                                               child: Text("Kontak (Kiri)"),
                                             ),
                                             selected: currentRole == 'contact',
-                                            selectedColor: const Color(0x20008069),
-                                            checkmarkColor: const Color(0xFF008069),
                                             onSelected: (val) {
                                               if (val) {
                                                 setState(() {
@@ -287,13 +252,11 @@ class _ManageSendersDialogState extends State<ManageSendersDialog> {
                                         ),
                                         const SizedBox(width: 8),
                                         Expanded(
-                                          child: ChoiceChip(
+                                          child: AppChoiceChip(
                                             label: const Center(
                                               child: Text("Saya (Kanan)"),
                                             ),
                                             selected: currentRole == 'me',
-                                            selectedColor: const Color(0x20008069),
-                                            checkmarkColor: const Color(0xFF008069),
                                             onSelected: (val) {
                                               if (val) {
                                                 setState(() {
@@ -315,18 +278,14 @@ class _ManageSendersDialogState extends State<ManageSendersDialog> {
               ),
             ),
       actions: [
-        TextButton(
+        AppButton(
+          label: "Batal",
           onPressed: () => Navigator.pop(context),
-          child: const Text("Batal", style: TextStyle(color: Colors.grey)),
+          variant: AppButtonVariant.secondary,
         ),
-        ElevatedButton(
+        AppButton(
+          label: "Simpan",
           onPressed: _confirmAndSave,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF008069),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          child: const Text("Simpan"),
         ),
       ],
     );

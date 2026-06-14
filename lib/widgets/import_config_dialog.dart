@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import '../models/chat_thread.dart';
 import '../models/parsed_chat_result.dart';
+import 'common/app_dialog.dart';
+import 'common/app_choice_chip.dart';
+import 'common/app_button.dart';
+import 'common/app_text_field.dart';
 
 class ImportConfigDialog extends StatefulWidget {
   final String filePath;
@@ -62,18 +66,10 @@ class _ImportConfigDialogState extends State<ImportConfigDialog> {
     final fileName = p.basename(widget.filePath);
     final senders = widget.parsedData.uniqueSenders;
 
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: const Row(
-        children: [
-          Icon(Icons.import_export, color: Color(0xFF008069)),
-          SizedBox(width: 8),
-          Text(
-            "Konfigurasi Import",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-          ),
-        ],
-      ),
+    return AppDialog(
+      icon: Icons.import_export,
+      iconColor: const Color(0xFF008069),
+      title: "Konfigurasi Import",
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -97,11 +93,9 @@ class _ImportConfigDialogState extends State<ImportConfigDialog> {
               ),
               Row(
                 children: [
-                  ChoiceChip(
+                  AppChoiceChip(
                     label: const Text("Thread Baru"),
                     selected: _createNewThread,
-                    selectedColor: const Color(0x20008069),
-                    checkmarkColor: const Color(0xFF008069),
                     onSelected: (val) {
                       setState(() {
                         _createNewThread = true;
@@ -109,11 +103,9 @@ class _ImportConfigDialogState extends State<ImportConfigDialog> {
                     },
                   ),
                   const SizedBox(width: 12),
-                  ChoiceChip(
+                  AppChoiceChip(
                     label: const Text("Gabung Thread"),
                     selected: !_createNewThread,
-                    selectedColor: const Color(0x20008069),
-                    checkmarkColor: const Color(0xFF008069),
                     onSelected: (val) {
                       setState(() {
                         _createNewThread = false;
@@ -134,17 +126,9 @@ class _ImportConfigDialogState extends State<ImportConfigDialog> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 6),
-              TextField(
+              AppTextField(
                 controller: _nameController,
-                decoration: InputDecoration(
-                  hintText: "Masukkan nama kontak",
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: const BorderSide(color: Color(0xFF008069), width: 2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
+                hintText: "Masukkan nama kontak",
               ),
             ] else ...[
               const Text(
@@ -222,11 +206,13 @@ class _ImportConfigDialogState extends State<ImportConfigDialog> {
         ),
       ),
       actions: [
-        TextButton(
+        AppButton(
+          label: "Batal",
           onPressed: () => Navigator.pop(context),
-          child: const Text("Batal", style: TextStyle(color: Colors.grey)),
+          variant: AppButtonVariant.secondary,
         ),
-        ElevatedButton(
+        AppButton(
+          label: "Mulai Import",
           onPressed: () {
             final contactName = _createNewThread 
                 ? _nameController.text.trim()
@@ -250,12 +236,6 @@ class _ImportConfigDialogState extends State<ImportConfigDialog> {
               _selectedExistingThread,
             );
           },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF008069),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          child: const Text("Mulai Import"),
         ),
       ],
     );
