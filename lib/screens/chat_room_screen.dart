@@ -33,11 +33,23 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   bool _hasMoreMessages = true;
   static const int _limit = 100;
 
+  // Search states
+  static final List<String> _searchHistory = [];
+  final ScrollController _searchScrollController = ScrollController();
+  List<ChatMessage> _searchResults = [];
+  bool _isSearchingDb = false;
+  bool _isLoadingMoreSearch = false;
+  bool _hasMoreSearchResults = true;
+  int _searchOffset = 0;
+  static const int _searchLimit = 20;
+  int? _highlightedMessageId;
+
   @override
   void initState() {
     super.initState();
     _currentThread = widget.thread;
     _scrollController.addListener(_scrollListener);
+    _searchScrollController.addListener(_searchScrollListener);
     _loadMessages();
   }
 
@@ -45,6 +57,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   void dispose() {
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
+    _searchScrollController.removeListener(_searchScrollListener);
+    _searchScrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -59,6 +73,23 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           _hasMoreMessages &&
           !_isSearching) {
         _loadMoreMessages();
+      }
+    }
+  }
+
+  void _searchScrollListener() {
+    if (_searchScrollController.hasClients) {
+      final maxScroll = _searchScrollController.position.maxScrollExtent;
+      final currentScroll = _searchScrollController.position.pixels;
+      // Trigger load more when user scrolls near the bottom of search results
+      if (maxScroll - currentScroll <= 100 &&
+          !_isLoadingMoreSearch &&
+          _hasMoreSearchResults &&
+          _isSearching) {
+        final query = _searchController.text.trim();
+        if (query.length >= 3) {
+          _performSearch(query, isInitial: false);
+        }
       }
     }
   }
@@ -105,20 +136,136 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     });
   }
 
-  void _filterMessages(String query) {
-    if (query.isEmpty) {
+  Future<void> _loadMessagesWithTargetCount(int count, {required int targetMessageId}) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final db = DatabaseHelper.instance;
+    final messages = await db.getMessagesForThreadPaginated(_currentThread.id!, count, 0);
+
+    final appDir = await getApplicationDocumentsDirectory();
+    final mediaDirPath = p.join(appDir.path, 'media', _currentThread.id.toString());
+
+    // Check if we actually have more messages in total
+    final totalInDb = await db.getMessageCountForThread(_currentThread.id!);
+
+    setState(() {
+      _allMessages = messages;
+      _filteredMessages = messages;
+      _mediaDirPath = mediaDirPath;
+      _isLoading = false;
+      _hasMoreMessages = _allMessages.length < totalInDb;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final groupedItems = _buildGroupedItems();
+      int targetIdx = -1;
+      for (int i = 0; i < groupedItems.length; i++) {
+        if (!groupedItems[i].isHeader && groupedItems[i].message?.id == targetMessageId) {
+          targetIdx = i;
+          break;
+        }
+      }
+
+      if (targetIdx != -1) {
+        final listIndex = groupedItems.length - 1 - targetIdx;
+        if (_scrollController.hasClients) {
+          final double maxScroll = _scrollController.position.maxScrollExtent;
+          double targetOffset = listIndex * 90.0;
+          if (targetOffset > maxScroll) {
+            targetOffset = maxScroll;
+          }
+          if (targetOffset < 0) {
+            targetOffset = 0;
+          }
+
+          _scrollController.animateTo(
+            targetOffset,
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOut,
+          );
+        }
+
+        setState(() {
+          _highlightedMessageId = targetMessageId;
+        });
+
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (mounted) {
+            setState(() {
+              if (_highlightedMessageId == targetMessageId) {
+                _highlightedMessageId = null;
+              }
+            });
+          }
+        });
+      }
+    });
+  }
+
+  void _onSearchChanged(String query) {
+    if (query.trim().length < 3) {
       setState(() {
-        _filteredMessages = _allMessages;
+        _searchResults = [];
+        _isSearchingDb = false;
+        _hasMoreSearchResults = false;
       });
       return;
     }
+    _performSearch(query.trim(), isInitial: true);
+  }
 
-    setState(() {
-      _filteredMessages = _allMessages.where((msg) {
-        return msg.content.toLowerCase().contains(query.toLowerCase()) ||
-               msg.sender.toLowerCase().contains(query.toLowerCase());
-      }).toList();
-    });
+  Future<void> _performSearch(String query, {bool isInitial = false}) async {
+    if (isInitial) {
+      setState(() {
+        _isSearchingDb = true;
+        _searchOffset = 0;
+        _searchResults = [];
+        _hasMoreSearchResults = true;
+      });
+    } else {
+      if (_isLoadingMoreSearch || !_hasMoreSearchResults) return;
+      setState(() {
+        _isLoadingMoreSearch = true;
+      });
+    }
+
+    try {
+      final db = DatabaseHelper.instance;
+      final results = await db.searchMessagesPaginated(
+        threadId: _currentThread.id!,
+        query: query,
+        limit: _searchLimit,
+        offset: _searchOffset,
+      );
+
+      setState(() {
+        if (isInitial) {
+          _searchResults = results;
+          _isSearchingDb = false;
+        } else {
+          _searchResults.addAll(results);
+          _isLoadingMoreSearch = false;
+        }
+        _hasMoreSearchResults = results.length == _searchLimit;
+        _searchOffset += results.length;
+      });
+    } catch (e) {
+      setState(() {
+        _isSearchingDb = false;
+        _isLoadingMoreSearch = false;
+      });
+    }
+  }
+
+  void _applySearchQuery(String query) {
+    _searchController.text = query;
+    _searchController.selection = TextSelection.fromPosition(
+      TextPosition(offset: query.length),
+    );
+    _onSearchChanged(query);
   }
 
 
@@ -159,19 +306,370 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     return items;
   }
 
+  Widget _buildHistoryEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.search,
+            size: 64,
+            color: Colors.grey.withAlpha(76),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            "Cari Pesan",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 32.0),
+            child: Text(
+              "Masukkan minimal 3 karakter untuk mencari pesan di obrolan ini.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHistoryList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 16.0, bottom: 8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "Pencarian Terbaru",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: Color(0xFF008069),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _searchHistory.clear();
+                  });
+                },
+                child: const Text(
+                  "Hapus Semua",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: _searchHistory.length,
+            itemBuilder: (context, index) {
+              final query = _searchHistory[index];
+              return ListTile(
+                leading: const Icon(Icons.history, color: Colors.grey),
+                title: Text(query),
+                trailing: IconButton(
+                  icon: const Icon(Icons.clear, size: 18, color: Colors.grey),
+                  onPressed: () {
+                    setState(() {
+                      _searchHistory.removeAt(index);
+                    });
+                  },
+                ),
+                onTap: () => _applySearchQuery(query),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchLoadingState() {
+    return const Center(
+      child: CircularProgressIndicator(color: Color(0xFF008069)),
+    );
+  }
+
+  Widget _buildSearchEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.search_off,
+            size: 64,
+            color: Colors.grey.withAlpha(76),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            "Tidak Ada Hasil",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32.0),
+            child: Text(
+              "Tidak ditemukan pesan yang cocok dengan \"${_searchController.text}\".",
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchResultsList() {
+    return ListView.builder(
+      controller: _searchScrollController,
+      itemCount: _searchResults.length + (_isLoadingMoreSearch ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (_isLoadingMoreSearch && index == _searchResults.length) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Color(0xFF008069),
+                ),
+              ),
+            ),
+          );
+        }
+
+        final message = _searchResults[index];
+        return _buildSearchResultTile(message);
+      },
+    );
+  }
+
+  Widget _buildSearchResultTile(ChatMessage message) {
+    final query = _searchController.text.trim();
+    final timeStr = _formatSearchResultTime(message.timestamp);
+    final isMe = message.sender == _currentThread.meName;
+
+    return InkWell(
+      onTap: () async {
+        if (query.isNotEmpty) {
+          setState(() {
+            _searchHistory.remove(query);
+            _searchHistory.insert(0, query);
+            if (_searchHistory.length > 20) {
+              _searchHistory.removeLast();
+            }
+          });
+        }
+
+        final db = DatabaseHelper.instance;
+        final countNewer = await db.getMessageIndexInThread(
+          _currentThread.id!,
+          message.id!,
+          message.timestamp,
+        );
+
+        setState(() {
+          _isSearching = false;
+        });
+
+        final totalToLoad = countNewer + 50;
+        await _loadMessagesWithTargetCount(totalToLoad, targetMessageId: message.id!);
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: isMe ? const Color(0xFFDCF8C6) : const Color(0xFFE0E0E0),
+              child: Text(
+                message.sender.isNotEmpty ? message.sender.substring(0, 1).toUpperCase() : '?',
+                style: TextStyle(
+                  color: isMe ? const Color(0xFF075E54) : Colors.black87,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        isMe ? 'Saya' : message.sender,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      Text(
+                        timeStr,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  _buildHighlightedText(message.content, query),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHighlightedText(String text, String query) {
+    if (query.isEmpty) return Text(text, style: const TextStyle(color: Colors.black87, fontSize: 14));
+
+    final List<TextSpan> spans = [];
+    final lowercaseText = text.toLowerCase();
+    final lowercaseQuery = query.toLowerCase();
+
+    int start = 0;
+    while (true) {
+      final index = lowercaseText.indexOf(lowercaseQuery, start);
+      if (index == -1) {
+        spans.add(TextSpan(text: text.substring(start)));
+        break;
+      }
+
+      if (index > start) {
+        spans.add(TextSpan(text: text.substring(start, index)));
+      }
+
+      spans.add(TextSpan(
+        text: text.substring(index, index + query.length),
+        style: const TextStyle(
+          backgroundColor: Color(0xFFFFF9C4),
+          color: Colors.black,
+          fontWeight: FontWeight.bold,
+        ),
+      ));
+
+      start = index + query.length;
+    }
+
+    return RichText(
+      text: TextSpan(
+        style: const TextStyle(color: Colors.black87, fontSize: 14),
+        children: spans,
+      ),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
+  String _formatSearchResultTime(int timestamp) {
+    final dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final date = DateTime(dateTime.year, dateTime.month, dateTime.day);
+
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    final timeStr = '$hour:$minute';
+
+    if (date == today) {
+      return 'Hari ini $timeStr';
+    } else if (date == yesterday) {
+      return 'Kemarin $timeStr';
+    } else {
+      final months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+        'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+      ];
+      return '${dateTime.day} ${months[dateTime.month - 1]} ${dateTime.year} $timeStr';
+    }
+  }
+
+  Widget _buildSearchView() {
+    final query = _searchController.text.trim();
+    if (query.length < 3) {
+      return Container(
+        color: Colors.white,
+        child: _searchHistory.isEmpty ? _buildHistoryEmptyState() : _buildHistoryList(),
+      );
+    }
+
+    if (_isSearchingDb) {
+      return Container(
+        color: Colors.white,
+        child: _buildSearchLoadingState(),
+      );
+    }
+
+    if (_searchResults.isEmpty) {
+      return Container(
+        color: Colors.white,
+        child: _buildSearchEmptyState(),
+      );
+    }
+
+    return Container(
+      color: Colors.white,
+      child: _buildSearchResultsList(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final groupedItems = _buildGroupedItems();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFEFEAE2), // WhatsApp chat wallpaper color
+      backgroundColor: const Color(0xFFEFEAE2),
       appBar: AppBar(
         backgroundColor: const Color(0xFF008069),
         elevation: 1,
         titleSpacing: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (_isSearching) {
+              setState(() {
+                _isSearching = false;
+                _searchController.clear();
+                _filteredMessages = _allMessages;
+              });
+            } else {
+              Navigator.pop(context);
+            }
+          },
         ),
         title: _isSearching
             ? TextField(
@@ -183,7 +681,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   hintStyle: TextStyle(color: Colors.white60),
                   border: InputBorder.none,
                 ),
-                onChanged: _filterMessages,
+                onChanged: _onSearchChanged,
               )
             : InkWell(
                 onTap: _showChatOptionsSheet,
@@ -238,11 +736,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             IconButton(
               icon: const Icon(Icons.close, color: Colors.white),
               onPressed: () {
-                setState(() {
-                  _isSearching = false;
+                if (_searchController.text.isNotEmpty) {
                   _searchController.clear();
-                  _filteredMessages = _allMessages;
-                });
+                  setState(() {
+                    _searchResults = [];
+                    _isSearchingDb = false;
+                  });
+                } else {
+                  setState(() {
+                    _isSearching = false;
+                    _filteredMessages = _allMessages;
+                  });
+                }
               },
             )
           else
@@ -258,68 +763,70 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFF008069)))
-          : Column(
-              children: [
-                Expanded(
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    reverse: true,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: groupedItems.length + (_isLoadingMore ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (_isLoadingMore && index == groupedItems.length) {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Center(
-                            child: SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: Color(0xFF008069),
+          : _isSearching
+              ? _buildSearchView()
+              : Column(
+                  children: [
+                    Expanded(
+                      child: ListView.builder(
+                        controller: _scrollController,
+                        reverse: true,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: groupedItems.length + (_isLoadingMore ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (_isLoadingMore && index == groupedItems.length) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              child: Center(
+                                child: SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Color(0xFF008069),
+                                  ),
+                                ),
                               ),
+                            );
+                          }
+
+                          final item = groupedItems[groupedItems.length - 1 - index];
+                          
+                          if (item.isHeader) {
+                            return DateHeader(dateText: item.dateHeader!);
+                          } else {
+                            return MessageBubble(
+                              message: item.message!,
+                              meName: _currentThread.meName,
+                              mediaDirPath: _mediaDirPath,
+                              isHighlighted: _highlightedMessageId == item.message!.id,
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                    Container(
+                      width: double.infinity,
+                      color: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.lock_outline, size: 14, color: Colors.grey[600]),
+                          const SizedBox(width: 6),
+                          Text(
+                            "Mode Baca Saja (Read-Only)",
+                            style: TextStyle(
+                              color: Colors.grey[600], 
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500
                             ),
                           ),
-                        );
-                      }
-
-                      final item = groupedItems[groupedItems.length - 1 - index];
-                      
-                      if (item.isHeader) {
-                        return DateHeader(dateText: item.dateHeader!);
-                      } else {
-                        return MessageBubble(
-                          message: item.message!,
-                          meName: _currentThread.meName,
-                          mediaDirPath: _mediaDirPath,
-                        );
-                      }
-                    },
-                  ),
-                ),
-                // Footer (For read-only state notification)
-                Container(
-                  width: double.infinity,
-                  color: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.lock_outline, size: 14, color: Colors.grey[600]),
-                      const SizedBox(width: 6),
-                      Text(
-                        "Mode Baca Saja (Read-Only)",
-                        style: TextStyle(
-                          color: Colors.grey[600], 
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
     );
   }
 

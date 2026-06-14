@@ -7,12 +7,14 @@ class MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final String meName;
   final String? mediaDirPath;
+  final bool isHighlighted;
 
   const MessageBubble({
     super.key,
     required this.message,
     required this.meName,
     this.mediaDirPath,
+    this.isHighlighted = false,
   });
 
   String _formatTime(int timestamp) {
@@ -198,7 +200,9 @@ class MessageBubble extends StatelessWidget {
         ),
         padding: bubblePadding,
         decoration: BoxDecoration(
-          color: isMe ? const Color(0xFFE7FFDB) : Colors.white,
+          color: isHighlighted 
+              ? const Color(0xFFFFF9C4) 
+              : (isMe ? const Color(0xFFE7FFDB) : Colors.white),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(12),
             topRight: const Radius.circular(12),

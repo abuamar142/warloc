@@ -293,6 +293,33 @@ class DatabaseHelper {
     return result.map((json) => ChatMessage.fromMap(json)).toList();
   }
 
+  Future<int> getMessageIndexInThread(int threadId, int messageId, int timestamp) async {
+    final db = await instance.database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM messages WHERE threadId = ? AND (timestamp > ? OR (timestamp = ? AND id > ?))',
+      [threadId, timestamp, timestamp, messageId],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  Future<List<ChatMessage>> searchMessagesPaginated({
+    required int threadId,
+    required String query,
+    required int limit,
+    required int offset,
+  }) async {
+    final db = await instance.database;
+    final result = await db.query(
+      'messages',
+      where: 'threadId = ? AND content LIKE ? AND isSystem = 0',
+      whereArgs: [threadId, '%$query%'],
+      orderBy: 'timestamp DESC, id DESC',
+      limit: limit,
+      offset: offset,
+    );
+    return result.map((json) => ChatMessage.fromMap(json)).toList();
+  }
+
   Future close() async {
     final db = _database;
     if (db != null) {
