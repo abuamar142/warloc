@@ -282,6 +282,17 @@ class DatabaseHelper {
     });
   }
 
+  Future<List<ChatMessage>> getMediaMessagesForThread(int threadId) async {
+    final db = await instance.database;
+    final result = await db.query(
+      'messages',
+      where: 'threadId = ? AND mediaPath IS NOT NULL AND mediaPath != ?',
+      whereArgs: [threadId, ''],
+      orderBy: 'timestamp DESC',
+    );
+    return result.map((json) => ChatMessage.fromMap(json)).toList();
+  }
+
   Future close() async {
     final db = _database;
     if (db != null) {

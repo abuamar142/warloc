@@ -7,6 +7,7 @@ import '../models/chat_message.dart';
 import '../widgets/date_header.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/manage_senders_dialog.dart';
+import 'chat_media_screen.dart';
 
 class ChatRoomScreen extends StatefulWidget {
   final ChatThread thread;
@@ -185,7 +186,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 onChanged: _filterMessages,
               )
             : InkWell(
-                onTap: _showManageSendersDialog,
+                onTap: _showChatOptionsSheet,
                 borderRadius: BorderRadius.circular(8),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
@@ -330,6 +331,76 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       builder: (context) => ManageSendersDialog(
         thread: _currentThread,
         onSuccess: _refreshThreadDetails,
+      ),
+    );
+  }
+
+  void _showChatOptionsSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 28,
+              backgroundColor: const Color(0xFF008069),
+              child: Text(
+                _currentThread.name.isNotEmpty
+                    ? _currentThread.name.substring(0, 1).toUpperCase()
+                    : 'W',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _currentThread.name,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "Saya: ${_currentThread.meName}",
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const Divider(height: 24),
+            ListTile(
+              leading: const Icon(Icons.people_outline, color: Color(0xFF008069)),
+              title: const Text("Detail & Penggabungan Kontak"),
+              subtitle: const Text("Kelola pengirim pesan dan perbarui database"),
+              onTap: () {
+                Navigator.pop(context); // Close sheet
+                _showManageSendersDialog();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined, color: Color(0xFF008069)),
+              title: const Text("Media Obrolan"),
+              subtitle: const Text("Lihat berkas gambar, video, audio, dan dokumen"),
+              onTap: () {
+                Navigator.pop(context); // Close sheet
+                if (_mediaDirPath != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ChatMediaScreen(
+                        thread: _currentThread,
+                        mediaDirPath: _mediaDirPath!,
+                      ),
+                    ),
+                  ).then((_) => _refreshThreadDetails());
+                }
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
