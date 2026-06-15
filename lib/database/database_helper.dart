@@ -256,6 +256,17 @@ class DatabaseHelper {
     final db = await instance.database;
     int imported = 0;
     int skipped = 0;
+
+    // Load batch-specific duplicate check cache if none provided
+    final Map<String, List<({int timestamp, String sender})>> effectiveCache;
+    if (duplicateCache == null && messages.isNotEmpty) {
+      final threadId = messages.first.threadId;
+      final contents = messages.map((m) => m.content).toList();
+      effectiveCache = await loadDuplicateCheckCacheForBatch(threadId, contents);
+    } else {
+      effectiveCache = duplicateCache ?? {};
+    }
+
     await db.transaction((txn) async {
       for (final msg in messages) {
         final id = await _insertIfUniqueInTxn(
@@ -263,7 +274,7 @@ class DatabaseHelper {
           msg,
           threadMeName: threadMeName,
           importMeName: importMeName,
-          duplicateCache: duplicateCache,
+          duplicateCache: effectiveCache,
         );
         if (id != null) {
           imported++;
@@ -273,6 +284,31 @@ class DatabaseHelper {
       }
     });
     return (imported, skipped);
+  }
+
+  Future<Map<String, List<({int timestamp, String sender})>>> loadDuplicateCheckCacheForBatch(
+    int threadId,
+    List<String> contents,
+  ) async {
+    if (contents.isEmpty) return {};
+    final db = await instance.database;
+
+    final placeholders = List.filled(contents.length, '?').join(',');
+    final result = await db.query(
+      'messages',
+      columns: ['timestamp', 'sender', 'content'],
+      where: 'threadId = ? AND content IN ($placeholders)',
+      whereArgs: [threadId, ...contents],
+    );
+
+    final Map<String, List<({int timestamp, String sender})>> cache = {};
+    for (final row in result) {
+      final content = row['content'] as String;
+      final timestamp = row['timestamp'] as int;
+      final sender = row['sender'] as String;
+      cache.putIfAbsent(content, () => []).add((timestamp: timestamp, sender: sender));
+    }
+    return cache;
   }
 
   Future<Map<String, List<({int timestamp, String sender})>>> loadDuplicateCheckCache(int threadId) async {

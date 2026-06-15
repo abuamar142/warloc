@@ -100,13 +100,13 @@ class ChatImportService extends ChangeNotifier {
       if (isNew) {
         final newThread = ChatThread(name: name, meName: meName);
         threadId = await db.insertThread(newThread);
-        duplicateCache = {};
+        duplicateCache = {}; // Empty cache for new threads, since we know there are no existing messages
       } else {
         threadId = existingThread!.id!;
         if (existingThread.meName != meName) {
           await db.updateThread(existingThread.copyWith(meName: meName));
         }
-        duplicateCache = await db.loadDuplicateCheckCache(threadId);
+        duplicateCache = null; // Set to null so it loads batch-scoped cache during batch inserts
       }
 
       // Copy media files if tempDirPath is provided

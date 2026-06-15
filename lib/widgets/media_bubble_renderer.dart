@@ -5,6 +5,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:video_player/video_player.dart';
+import '../services/audio_playback_service.dart';
 
 class MediaBubbleRenderer extends StatelessWidget {
   final String mediaPath;
@@ -397,7 +398,12 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
       });
 
       _stateSub = player.onPlayerStateChanged.listen((state) {
-        if (mounted) setState(() => _isPlaying = state == PlayerState.playing);
+        if (mounted) {
+          setState(() => _isPlaying = state == PlayerState.playing);
+          if (state != PlayerState.playing) {
+            AudioPlaybackService.instance.clearPlayer(player);
+          }
+        }
       });
 
       await player.setSource(DeviceFileSource(widget.filePath));
@@ -412,7 +418,10 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
     _durationSub?.cancel();
     _positionSub?.cancel();
     _stateSub?.cancel();
-    _player?.dispose();
+    if (_player != null) {
+      AudioPlaybackService.instance.clearPlayer(_player!);
+      _player!.dispose();
+    }
     super.dispose();
   }
 
@@ -425,7 +434,15 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
       if (_player != null) {
         if (_isPlaying) {
           await _player!.pause();
+          AudioPlaybackService.instance.clearPlayer(_player!);
         } else {
+          await AudioPlaybackService.instance.registerAndPlay(_player!, () {
+            if (mounted) {
+              setState(() {
+                _isPlaying = false;
+              });
+            }
+          });
           await _player!.play(DeviceFileSource(widget.filePath));
         }
       }

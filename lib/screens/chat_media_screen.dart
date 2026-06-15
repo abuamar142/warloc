@@ -8,6 +8,7 @@ import '../theme/app_colors.dart';
 import '../utils/date_formatter.dart';
 import '../widgets/common/loading_indicator.dart';
 import '../widgets/common/empty_state_widget.dart';
+import '../widgets/full_screen_gallery_viewer.dart';
 
 class ChatMediaScreen extends StatefulWidget {
   final ChatThread thread;
@@ -81,64 +82,17 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
 
   void _openLightbox(ChatMessage msg) {
     if (msg.mediaPath == null) return;
-    final file = File(p.join(widget.mediaDirPath, msg.mediaPath!));
+
+    final index = _mediaMessages.indexOf(msg);
+    if (index == -1) return;
 
     Navigator.push(
       context,
       MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (context) => Scaffold(
-          backgroundColor: Colors.black,
-          appBar: AppBar(
-            backgroundColor: Colors.black,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white),
-              onPressed: () => Navigator.pop(context),
-            ),
-            title: Text(
-              msg.sender.isNotEmpty ? msg.sender : "Sistem",
-              style: const TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          ),
-          body: Center(
-            child: InteractiveViewer(
-              minScale: 0.5,
-              maxScale: 4.0,
-              child: msg.mediaType == 'video'
-                  ? Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        if (file.existsSync())
-                          Image.file(file)
-                        else
-                          const Icon(Icons.videocam, size: 80, color: Colors.white24),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.5),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.play_arrow,
-                            size: 48,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    )
-                  : file.existsSync()
-                      ? Image.file(file)
-                      : const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.broken_image, size: 64, color: Colors.white24),
-                            SizedBox(height: 8),
-                            Text("Gambar tidak ditemukan", style: TextStyle(color: Colors.white54)),
-                          ],
-                        ),
-            ),
-          ),
+        builder: (context) => FullScreenGalleryViewer(
+          mediaMessages: _mediaMessages,
+          initialIndex: index,
+          mediaDirPath: widget.mediaDirPath,
         ),
       ),
     );

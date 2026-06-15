@@ -113,5 +113,33 @@ void main() {
       expect(result.messages[1].sender, 'Bob');
       expect(result.messages[1].content, 'Message 2');
     });
+
+    test('Parse iOS format lines and media attachments', () {
+      final lines = [
+        '[09/06/2026, 14:32:01] John Doe: Hello Alice!',
+        '[09.06.26, 14:33:05 PM] Alice: <attached: IMG-123.jpg>',
+        '[09/06/2026, 14:34:10] Bob: Normal chat log',
+      ];
+
+      final result = WhatsAppParser.parseLines(lines);
+
+      expect(result.messages.length, 3);
+      expect(result.uniqueSenders, containsAll(['John Doe', 'Alice', 'Bob']));
+      
+      expect(result.messages[0].sender, 'John Doe');
+      expect(result.messages[0].content, 'Hello Alice!');
+      expect(result.messages[0].timestamp, DateTime(2026, 6, 9, 14, 32));
+      expect(result.messages[0].mediaPath, isNull);
+
+      expect(result.messages[1].sender, 'Alice');
+      expect(result.messages[1].content, '<attached: IMG-123.jpg>');
+      expect(result.messages[1].timestamp, DateTime(2026, 6, 9, 14, 33)); // 14:33 PM -> 14:33
+      expect(result.messages[1].mediaPath, 'IMG-123.jpg');
+      expect(result.messages[1].mediaType, 'image');
+
+      expect(result.messages[2].sender, 'Bob');
+      expect(result.messages[2].content, 'Normal chat log');
+      expect(result.messages[2].timestamp, DateTime(2026, 6, 9, 14, 34));
+    });
   });
 }

@@ -4,19 +4,29 @@ import '../models/parsed_chat_result.dart';
 import 'media_helper.dart';
 
 class WhatsAppParser {
-  // Matches WhatsApp date/time patterns:
-  // e.g. "09/06/2026, 14:32 - " or "9/6/26, 2:32 PM - " or "09/06/2026 14:32 - "
-  static final RegExp _lineStartRegex = RegExp(
-    r'^(\d{1,2}/\d{1,2}/\d{2,4}),?\s+(\d{1,2}:\d{2}(?:\s?[aApP][mM])?)\s+-\s+(.*)$'
+  // Matches Android WhatsApp date/time patterns:
+  // e.g. "09/06/2026, 14:32 - " or "9/6/26, 2:32 PM - "
+  static final RegExp _androidLineStartRegex = RegExp(
+    r'^(\d{1,2}/\d{1,2}/\d{2,4}),?\s+(\d{1,2}:\d{2}(?::\d{2})?(?:\s?[aApP][mM])?)\s+-\s+(.*)$'
   );
 
-  // Matches WhatsApp media attachment lines:
+  // Matches iOS WhatsApp date/time patterns:
+  // e.g. "[09/06/2026, 14:32:01] " or "[09.06.26, 14:32:01 PM] "
+  static final RegExp _iosLineStartRegex = RegExp(
+    r'^\[(\d{1,2}[/.]\d{1,2}[/.]\d{2,4}),?\s+(\d{1,2}:\d{2}(?::\d{2})?(?:\s?[aApP][mM])?)\]\s+(.*)$'
+  );
+
+  // Matches Android WhatsApp media attachment lines:
   // e.g. "IMG-20260609-WA0000.jpg (file attached)"
-  // e.g. "STK-20260611-WA0003.webp (file attached)"
-  // e.g. "VID-20260611-WA0008.mp4 (file attached)"
-  // Supports "file attached", "file terlampir", "attached", "terlampir", "<attached>"
-  static final RegExp _mediaAttachmentRegex = RegExp(
-    r'^([\w\-. ]+\.\w{3,4})\s*(\(file attached\)|\(file terlampir\)|\(Attached\)|\(Terlampir\)|\(terlampir\)|\(Attached File\)|<attached>|<attached:.*>)$',
+  static final RegExp _androidMediaAttachmentRegex = RegExp(
+    r'^([\w\-. ]+\.\w{3,4})\s*(\(file attached\)|\(file terlampir\)|\(Attached\)|\(Terlampir\)|\(terlampir\)|\(Attached File\)|<attached>)$',
+    caseSensitive: false
+  );
+
+  // Matches iOS WhatsApp media attachment lines:
+  // e.g. "<attached: IMG-20260609-WA0000.jpg>"
+  static final RegExp _iosMediaAttachmentRegex = RegExp(
+    r'^<attached:\s*([\w\-. ]+\.\w{3,4})>$',
     caseSensitive: false
   );
 
@@ -50,7 +60,10 @@ class WhatsAppParser {
       final line = lines[i];
       if (line.trim().isEmpty && currentMessage == null) continue;
 
-      final match = _lineStartRegex.firstMatch(line);
+      var match = _androidLineStartRegex.firstMatch(line);
+      if (match == null) {
+        match = _iosLineStartRegex.firstMatch(line);
+      }
 
       if (match != null) {
         // We found a new message line!
@@ -82,12 +95,20 @@ class WhatsAppParser {
             senders.add(sender);
             
             // Check for media attachment
-            final mediaMatch = _mediaAttachmentRegex.firstMatch(content.trim());
+            final contentTrimmed = content.trim();
+            final androidMediaMatch = _androidMediaAttachmentRegex.firstMatch(contentTrimmed);
             String? mediaPath;
             String? mediaType;
-            if (mediaMatch != null) {
-              mediaPath = mediaMatch.group(1)!.trim();
+            
+            if (androidMediaMatch != null) {
+              mediaPath = androidMediaMatch.group(1)!.trim();
               mediaType = MediaHelper.getMediaTypeFromExtension(mediaPath);
+            } else {
+              final iosMediaMatch = _iosMediaAttachmentRegex.firstMatch(contentTrimmed);
+              if (iosMediaMatch != null) {
+                mediaPath = iosMediaMatch.group(1)!.trim();
+                mediaType = MediaHelper.getMediaTypeFromExtension(mediaPath);
+              }
             }
 
             currentMessage = ParsedMessageTemp(
@@ -154,7 +175,9 @@ class WhatsAppParser {
   }
 
   static DateTime _parseDateTime(String dateStr, String timeStr) {
-    final dateParts = dateStr.split('/');
+    // Standardize dot separator to slash separator
+    final normalizedDateStr = dateStr.replaceAll('.', '/');
+    final dateParts = normalizedDateStr.split('/');
     if (dateParts.length != 3) {
       throw FormatException("Format tanggal salah");
     }
