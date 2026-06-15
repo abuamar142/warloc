@@ -141,6 +141,15 @@ class DatabaseHelper {
     );
   }
 
+  Future<int> deleteMessage(int id) async {
+    final db = await instance.database;
+    return await db.delete(
+      'messages',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   // MESSAGE OPERATIONS
   /// Inserts a message if it doesn't already exist with the exact same threadId, timestamp, sender, and content.
   /// If [threadMeName] and [importMeName] are provided, it performs a smart duplicate check comparing sender roles

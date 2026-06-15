@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import '../widgets/common/app_dialog.dart';
+import '../widgets/common/app_button.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import '../database/database_helper.dart';
@@ -307,6 +310,56 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         if (query.length >= 3) {
           _performSearch(query, isInitial: false);
         }
+      }
+    }
+  }
+
+  Future<void> _deleteMessage(ChatMessage message) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AppDialog(
+        title: "Hapus Pesan",
+        content: const Text(
+          "Apakah Anda yakin ingin menghapus pesan ini secara permanen? Tindakan ini tidak dapat dibatalkan.",
+        ),
+        actions: [
+          AppButton(
+            label: "Batal",
+            onPressed: () => Navigator.pop(context, false),
+            variant: AppButtonVariant.secondary,
+          ),
+          AppButton(
+            label: "Hapus",
+            onPressed: () => Navigator.pop(context, true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && message.id != null) {
+      // 1. Delete physical media file if exists
+      if (message.hasMedia && message.mediaPath != null && _mediaDirPath != null) {
+        try {
+          final filePath = p.join(_mediaDirPath!, message.mediaPath!);
+          final file = File(filePath);
+          if (await file.exists()) {
+            await file.delete();
+          }
+        } catch (e) {
+          debugPrint("Gagal menghapus file media: $e");
+        }
+      }
+
+      // 2. Delete message from database
+      await DatabaseHelper.instance.deleteMessage(message.id!);
+
+      // 3. Reload list
+      _loadMessages();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Pesan berhasil dihapus")),
+        );
       }
     }
   }
@@ -932,6 +985,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                   meName: _currentThread.meName,
                                   mediaDirPath: _mediaDirPath,
                                   isHighlighted: isTarget,
+                                  onLongPress: () => _deleteMessage(item.message!),
                                 );
                               }
                             },

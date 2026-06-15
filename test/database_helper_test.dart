@@ -120,5 +120,32 @@ void main() {
       final searchResultsSpecific = await dbHelper.searchMessages(threadId, 'number 3');
       expect(searchResultsSpecific.length, 1);
     });
+
+    test('deleteMessage deletes message from SQLite', () async {
+      final threadId = await dbHelper.insertThread(ChatThread(name: 'DeleteTest', meName: 'Me'));
+      
+      final msg = ChatMessage(
+        threadId: threadId,
+        timestamp: 1686700000000,
+        sender: 'Sender',
+        content: 'To be deleted',
+        isSystem: 0,
+      );
+
+      final messageId = await dbHelper.insertMessageIfUnique(msg);
+      expect(messageId, isNotNull);
+
+      // Verify exists
+      var count = await dbHelper.getMessageCountForThread(threadId);
+      expect(count, 1);
+
+      // Delete
+      final rowsDeleted = await dbHelper.deleteMessage(messageId!);
+      expect(rowsDeleted, 1);
+
+      // Verify deleted
+      count = await dbHelper.getMessageCountForThread(threadId);
+      expect(count, 0);
+    });
   });
 }

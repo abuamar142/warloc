@@ -10,6 +10,7 @@ class MessageBubble extends StatelessWidget {
   final String meName;
   final String? mediaDirPath;
   final bool isHighlighted;
+  final VoidCallback? onLongPress;
 
   const MessageBubble({
     super.key,
@@ -17,6 +18,7 @@ class MessageBubble extends StatelessWidget {
     required this.meName,
     this.mediaDirPath,
     this.isHighlighted = false,
+    this.onLongPress,
   });
 
   String _formatTime(int timestamp) {
@@ -105,21 +107,24 @@ class MessageBubble extends StatelessWidget {
     if (message.isSystemMessage) {
       return Align(
         alignment: Alignment.center,
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 32),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFFEDF2F4),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0x0A000000)),
-          ),
-          child: Text(
-            message.content,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[700],
-              fontWeight: FontWeight.w500,
+        child: GestureDetector(
+          onLongPress: onLongPress,
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 32),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEDF2F4),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0x0A000000)),
+            ),
+            child: Text(
+              message.content,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[700],
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ),
@@ -133,65 +138,68 @@ class MessageBubble extends StatelessWidget {
     if (isSticker && message.hasMedia) {
       return Align(
         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
-          margin: EdgeInsets.only(
-            top: 3,
-            bottom: 3,
-            left: isMe ? 64 : 16,
-            right: isMe ? 16 : 64,
-          ),
-          child: Column(
-            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-            children: [
-              if (!isMe) ...[
-                Text(
-                  message.sender,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    color: Color(0xFF075E54),
-                  ),
-                ),
-                const SizedBox(height: 2),
-              ],
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16, right: 20),
-                    child: MediaBubbleRenderer(
-                      mediaPath: message.mediaPath!,
-                      mediaType: 'sticker',
-                      mediaDirPath: mediaDirPath ?? '',
+        child: GestureDetector(
+          onLongPress: onLongPress,
+          child: Container(
+            margin: EdgeInsets.only(
+              top: 3,
+              bottom: 3,
+              left: isMe ? 64 : 16,
+              right: isMe ? 16 : 64,
+            ),
+            child: Column(
+              crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                if (!isMe) ...[
+                  Text(
+                    message.sender,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: Color(0xFF075E54),
                     ),
                   ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _formatTime(message.timestamp),
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Color(0x66000000),
-                          ),
-                        ),
-                        if (isMe) ...[
-                          const SizedBox(width: 4),
-                          Icon(
-                            Icons.done_all,
-                            size: 14,
-                            color: Colors.blue[400],
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
+                  const SizedBox(height: 2),
                 ],
-              ),
-            ],
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16, right: 20),
+                      child: MediaBubbleRenderer(
+                        mediaPath: message.mediaPath!,
+                        mediaType: 'sticker',
+                        mediaDirPath: mediaDirPath ?? '',
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _formatTime(message.timestamp),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Color(0x66000000),
+                            ),
+                          ),
+                          if (isMe) ...[
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.done_all,
+                              size: 14,
+                              color: Colors.blue[400],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -247,82 +255,85 @@ class MessageBubble extends StatelessWidget {
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeOut,
-        margin: EdgeInsets.only(
-          top: 3,
-          bottom: 3,
-          left: isMe ? 64 : 16,
-          right: isMe ? 16 : 64,
-        ),
-        padding: bubblePadding,
-        decoration: BoxDecoration(
-          color: isHighlighted 
-              ? const Color(0xFFFFF9C4) 
-              : (isMe ? const Color(0xFFE7FFDB) : Colors.white),
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(12),
-            topRight: const Radius.circular(12),
-            bottomLeft: isMe ? const Radius.circular(12) : const Radius.circular(0),
-            bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(12),
+      child: GestureDetector(
+        onLongPress: onLongPress,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeOut,
+          margin: EdgeInsets.only(
+            top: 3,
+            bottom: 3,
+            left: isMe ? 64 : 16,
+            right: isMe ? 16 : 64,
           ),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0D000000),
-              offset: Offset(0, 1),
-              blurRadius: 1,
-            )
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Sender name (only for other speakers)
-            if (!isMe) ...[
-              Text(
-                message.sender,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  color: Color(0xFF075E54), // Whatsapp dark green for user names
+          padding: bubblePadding,
+          decoration: BoxDecoration(
+            color: isHighlighted 
+                ? const Color(0xFFFFF9C4) 
+                : (isMe ? const Color(0xFFE7FFDB) : Colors.white),
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(12),
+              topRight: const Radius.circular(12),
+              bottomLeft: isMe ? const Radius.circular(12) : const Radius.circular(0),
+              bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(12),
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0D000000),
+                offset: Offset(0, 1),
+                blurRadius: 1,
+              )
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Sender name (only for other speakers)
+              if (!isMe) ...[
+                Text(
+                  message.sender,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: Color(0xFF075E54), // Whatsapp dark green for user names
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-            ],
-            
-            // Media file section (if any)
-            if (message.hasMedia) ...[
-              MediaBubbleRenderer(
-                mediaPath: message.mediaPath!,
-                mediaType: message.mediaType!,
-                mediaDirPath: mediaDirPath ?? '',
-                timestampOverlay: (isImageOrVideo && !hasCaption) ? timestampWidget : null,
-              ),
-              if (hasCaption) const SizedBox(height: 4),
-            ],
+                const SizedBox(height: 2),
+              ],
+              
+              // Media file section (if any)
+              if (message.hasMedia) ...[
+                MediaBubbleRenderer(
+                  mediaPath: message.mediaPath!,
+                  mediaType: message.mediaType!,
+                  mediaDirPath: mediaDirPath ?? '',
+                  timestampOverlay: (isImageOrVideo && !hasCaption) ? timestampWidget : null,
+                ),
+                if (hasCaption) const SizedBox(height: 4),
+              ],
 
-            // Content text & timestamp layout
-            if (!isImageOrVideo || hasCaption) ...[
-              Wrap(
-                alignment: WrapAlignment.end,
-                crossAxisAlignment: WrapCrossAlignment.end,
-                spacing: 12,
-                runSpacing: 4,
-                children: [
-                  _buildRichTextWithLinks(
-                    displayContent,
-                    const TextStyle(fontSize: 15, color: Colors.black),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2.0),
-                    child: timestampWidget,
-                  ),
-                ],
-              ),
+              // Content text & timestamp layout
+              if (!isImageOrVideo || hasCaption) ...[
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  crossAxisAlignment: WrapCrossAlignment.end,
+                  spacing: 12,
+                  runSpacing: 4,
+                  children: [
+                    _buildRichTextWithLinks(
+                      displayContent,
+                      const TextStyle(fontSize: 15, color: Colors.black),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2.0),
+                      child: timestampWidget,
+                    ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
