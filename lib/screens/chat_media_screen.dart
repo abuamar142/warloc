@@ -8,6 +8,7 @@ import '../theme/app_colors.dart';
 import '../utils/date_formatter.dart';
 import '../widgets/common/loading_indicator.dart';
 import '../widgets/common/empty_state_widget.dart';
+import '../widgets/common/custom_app_bar.dart';
 import '../widgets/full_screen_gallery_viewer.dart';
 
 class ChatMediaScreen extends StatefulWidget {
@@ -99,6 +100,8 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
   }
 
   Widget _buildMediaItem(ChatMessage msg) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final fileName = msg.mediaPath!;
     final absolutePath = p.join(widget.mediaDirPath, fileName);
     final file = File(absolutePath);
@@ -109,7 +112,7 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
         onTap: () => _openLightbox(msg),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.grey[200],
+            color: isDark ? const Color(0xFF2E3B46) : Colors.grey[200],
             borderRadius: BorderRadius.circular(4),
           ),
           child: ClipRRect(
@@ -163,20 +166,26 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
       return Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: AppColors.audioBubbleBackground,
+          color: isDark ? const Color(0xFF1F2C34) : AppColors.audioBubbleBackground,
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: AppColors.primaryTransparent),
+          border: Border.all(
+            color: isDark ? const Color(0xFF2E3B46) : AppColors.primaryTransparent,
+          ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.mic, color: AppColors.primary, size: 28),
+            Icon(Icons.mic, color: isDark ? AppColors.accent : AppColors.primary, size: 28),
             const SizedBox(height: 4),
             Text(
               fileName,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.black87),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
             ),
           ],
         ),
@@ -186,9 +195,11 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
       return Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? const Color(0xFF1F2C34) : Colors.white,
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: Colors.grey[300]!),
+          border: Border.all(
+            color: isDark ? const Color(0xFF2E3B46) : Colors.grey[300]!,
+          ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -199,7 +210,11 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
               fileName,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.black87),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
             ),
           ],
         ),
@@ -209,19 +224,12 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F7),
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        title: const Text(
-          "Media, Dokumen & Audio",
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        elevation: 1,
+      appBar: const CustomAppBar(
+        title: Text("Media, Dokumen & Audio"),
       ),
       body: _isLoading
           ? const CustomLoadingIndicator()
@@ -242,7 +250,7 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
-                              color: Colors.grey[700],
+                              color: isDark ? Colors.grey[400] : Colors.grey[700],
                             ),
                           ),
                         ),

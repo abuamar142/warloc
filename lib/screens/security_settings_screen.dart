@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../services/security_service.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
+import '../widgets/common/custom_app_bar.dart';
 import '../theme/app_colors.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
@@ -34,8 +35,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
       _lockTimeoutSeconds = security.lockTimeoutSeconds;
     });
   }
-
-
 
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -131,16 +130,13 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final borderColor = isDark ? const Color(0xFF2E3B46) : Colors.grey[200]!;
+
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: const Text(
-          "Pengaturan Keamanan",
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-        backgroundColor: AppColors.primary,
-        iconTheme: const IconThemeData(color: Colors.white),
-        elevation: 1,
+      appBar: const CustomAppBar(
+        title: Text("Pengaturan Keamanan"),
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
@@ -149,12 +145,12 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey[200]!),
+              side: BorderSide(color: borderColor),
             ),
             child: Column(
               children: [
                 SwitchListTile(
-                  secondary: const Icon(Icons.lock_outline, color: AppColors.primary),
+                  secondary: Icon(Icons.lock_outline, color: isDark ? AppColors.accent : AppColors.primary),
                   title: const Text(
                     "Kunci Aplikasi dengan PIN",
                     style: TextStyle(fontWeight: FontWeight.w600),
@@ -169,7 +165,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                 if (_isLockEnabled && _canCheckBiometrics) ...[
                   const Divider(height: 1, indent: 56),
                   SwitchListTile(
-                    secondary: const Icon(Icons.fingerprint, color: AppColors.primary),
+                    secondary: Icon(Icons.fingerprint, color: isDark ? AppColors.accent : AppColors.primary),
                     title: const Text(
                       "Buka Kunci dengan Sidik Jari",
                       style: TextStyle(fontWeight: FontWeight.w600),
@@ -206,12 +202,12 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: Colors.grey[200]!),
+                side: BorderSide(color: borderColor),
               ),
               child: Column(
                 children: [
                   ListTile(
-                    leading: const Icon(Icons.lock_reset, color: AppColors.primary),
+                    leading: Icon(Icons.lock_reset, color: isDark ? AppColors.accent : AppColors.primary),
                     title: const Text(
                       "Ubah PIN & Pertanyaan Keamanan",
                       style: TextStyle(fontWeight: FontWeight.w500),
@@ -225,7 +221,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                   ),
                   const Divider(height: 1, indent: 56),
                   ListTile(
-                    leading: const Icon(Icons.timer_outlined, color: AppColors.primary),
+                    leading: Icon(Icons.timer_outlined, color: isDark ? AppColors.accent : AppColors.primary),
                     title: const Text(
                       "Batas Waktu Penguncian",
                       style: TextStyle(fontWeight: FontWeight.w500),
@@ -237,8 +233,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                     trailing: DropdownButtonHideUnderline(
                       child: DropdownButton<int>(
                         value: _lockTimeoutSeconds,
-                        style: const TextStyle(
-                          color: AppColors.primary,
+                        dropdownColor: isDark ? const Color(0xFF1F2C34) : Colors.white,
+                        style: TextStyle(
+                          color: isDark ? AppColors.accent : AppColors.primary,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -311,15 +308,31 @@ class _PINSetupDialogState extends State<PINSetupDialog> {
   }
 
   InputDecoration _buildInputDecoration(String label, String hint) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: Colors.grey, fontSize: 13),
+      labelStyle: TextStyle(
+        color: isDark ? Colors.grey[400] : Colors.grey,
+        fontSize: 13,
+      ),
       hintText: hint,
-      hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
+      hintStyle: TextStyle(
+        color: isDark ? Colors.grey[600] : Colors.grey[400],
+        fontSize: 13,
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: isDark ? const Color(0xFF2E3B46) : Colors.grey[400]!),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: isDark ? const Color(0xFF2E3B46) : Colors.grey[400]!),
+      ),
       focusedBorder: OutlineInputBorder(
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5),
         borderRadius: BorderRadius.circular(8),
       ),
     );
@@ -327,9 +340,12 @@ class _PINSetupDialogState extends State<PINSetupDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return AppDialog(
       icon: Icons.security,
-      iconColor: AppColors.primary,
+      iconColor: isDark ? AppColors.accent : AppColors.primary,
       title: widget.isChanging ? "Ubah Kunci PIN" : "Atur Kunci PIN",
       content: Form(
         key: _formKey,
@@ -338,9 +354,9 @@ class _PINSetupDialogState extends State<PINSetupDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
+              Text(
                 "Tentukan PIN baru beserta pertanyaan keamanan untuk memulihkan PIN jika Anda lupa.",
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey),
               ),
               const SizedBox(height: 16),
               
@@ -351,6 +367,7 @@ class _PINSetupDialogState extends State<PINSetupDialog> {
                 obscureText: true,
                 maxLength: 4,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
                 decoration: _buildInputDecoration("PIN Baru (4 angka)", "Masukkan 4 angka"),
                 validator: (val) {
                   if (val == null || val.length != 4) {
@@ -368,6 +385,7 @@ class _PINSetupDialogState extends State<PINSetupDialog> {
                 obscureText: true,
                 maxLength: 4,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
                 decoration: _buildInputDecoration("Konfirmasi PIN Baru", "Masukkan kembali PIN baru"),
                 validator: (val) {
                   if (val != _pinController.text) {
@@ -379,22 +397,27 @@ class _PINSetupDialogState extends State<PINSetupDialog> {
               const SizedBox(height: 10),
 
               // Dropdown Pertanyaan Keamanan
-              const Text(
+              Text(
                 "Pertanyaan Keamanan",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: theme.colorScheme.onSurface,
+                ),
               ),
               const SizedBox(height: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[400]!),
+                  border: Border.all(color: isDark ? const Color(0xFF2E3B46) : Colors.grey[400]!),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: _selectedQuestion,
                     isExpanded: true,
-                    style: const TextStyle(color: Colors.black87, fontSize: 13),
+                    dropdownColor: theme.colorScheme.surface,
+                    style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 13),
                     onChanged: (String? val) {
                       if (val != null) {
                         setState(() {
@@ -406,7 +429,11 @@ class _PINSetupDialogState extends State<PINSetupDialog> {
                     items: _questions.map((q) {
                       return DropdownMenuItem<String>(
                         value: q,
-                        child: Text(q, overflow: TextOverflow.ellipsis),
+                        child: Text(
+                          q, 
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: theme.colorScheme.onSurface),
+                        ),
                       );
                     }).toList(),
                   ),
@@ -418,6 +445,7 @@ class _PINSetupDialogState extends State<PINSetupDialog> {
               if (_isCustomQuestion) ...[
                 TextFormField(
                   controller: _customQuestionController,
+                  style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
                   decoration: _buildInputDecoration("Tulis Pertanyaan Anda", "Contoh: Siapa nama cinta pertama Anda?"),
                   validator: (val) {
                     if (_isCustomQuestion && (val == null || val.trim().isEmpty)) {
@@ -432,6 +460,7 @@ class _PINSetupDialogState extends State<PINSetupDialog> {
               // Jawaban Pertanyaan Keamanan
               TextFormField(
                 controller: _answerController,
+                style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
                 decoration: _buildInputDecoration("Jawaban Keamanan", "Masukkan jawaban Anda"),
                 validator: (val) {
                   if (val == null || val.trim().isEmpty) {
@@ -498,9 +527,12 @@ class _PINConfirmDialogState extends State<PINConfirmDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return AppDialog(
       icon: Icons.lock_outline,
-      iconColor: AppColors.primary,
+      iconColor: isDark ? AppColors.accent : AppColors.primary,
       title: widget.title,
       content: Form(
         key: _formKey,
@@ -510,7 +542,7 @@ class _PINConfirmDialogState extends State<PINConfirmDialog> {
           children: [
             Text(
               widget.instruction,
-              style: const TextStyle(fontSize: 13, color: Colors.grey),
+              style: TextStyle(fontSize: 13, color: isDark ? Colors.grey[400] : Colors.grey),
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -519,13 +551,22 @@ class _PINConfirmDialogState extends State<PINConfirmDialog> {
               obscureText: true,
               maxLength: 4,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
               decoration: InputDecoration(
                 labelText: "PIN Saat Ini",
-                labelStyle: const TextStyle(color: Colors.grey, fontSize: 13),
+                labelStyle: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey, fontSize: 13),
+                hintStyle: TextStyle(color: isDark ? Colors.grey[600] : Colors.grey[400], fontSize: 13),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: isDark ? const Color(0xFF2E3B46) : Colors.grey[400]!),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: isDark ? const Color(0xFF2E3B46) : Colors.grey[400]!),
+                ),
                 focusedBorder: OutlineInputBorder(
-                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                  borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5),
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),

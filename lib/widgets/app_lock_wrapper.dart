@@ -45,6 +45,8 @@ class _AppLockWrapperState extends State<AppLockWrapper> with WidgetsBindingObse
     final security = SecurityService.instance;
     if (!security.isLockEnabled || security.pinCode.isEmpty) return;
 
+    if (security.isAuthenticatingBiometric) return;
+
     if (state == AppLifecycleState.paused) {
       security.updateLastActiveTime();
     } else if (state == AppLifecycleState.resumed) {

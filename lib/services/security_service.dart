@@ -51,7 +51,11 @@ class SecurityService {
     }
   }
 
+  bool _isAuthenticatingBiometric = false;
+  bool get isAuthenticatingBiometric => _isAuthenticatingBiometric;
+
   Future<bool> authenticateBiometric({required String reason}) async {
+    _isAuthenticatingBiometric = true;
     try {
       final authenticated = await _auth.authenticate(
         localizedReason: reason,
@@ -63,6 +67,10 @@ class SecurityService {
       return authenticated;
     } catch (_) {
       return false;
+    } finally {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _isAuthenticatingBiometric = false;
+      });
     }
   }
 
