@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'screens/chat_list_screen.dart';
 import 'widgets/app_lock_wrapper.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(
-    const AppLockWrapper(
-      child: MyApp(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -19,15 +16,12 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Warloc',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        primaryColor: const Color(0xFF008069),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF008069),
-          primary: const Color(0xFF008069),
-          secondary: const Color(0xFF00A884),
-        ),
-      ),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
+      builder: (context, child) {
+        return AppLockWrapper(child: child!);
+      },
       home: const ChatListScreen(),
     );
   }

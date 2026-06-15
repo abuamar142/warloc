@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
+import '../widgets/common/custom_app_bar.dart';
+import '../widgets/common/glass_container.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import '../database/database_helper.dart';
@@ -827,18 +830,202 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       color: Colors.white,
       child: _buildSearchResultsList(),
     );
+  } Widget _buildWallpaper(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Positioned.fill(
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark
+                ? const [
+                    Color(0xFF0B141A),
+                    Color(0xFF14222D),
+                    Color(0xFF0B141A),
+                  ]
+                : const [
+                    Color(0xFFEDF2F7),
+                    Color(0xFFE2E8F0),
+                    Color(0xFFEDF2F7),
+                  ],
+          ),
+        ),
+        child: Stack(
+          children: [
+            // Radial blur spot 1
+            Positioned(
+              top: -80,
+              left: -80,
+              child: Container(
+                width: 250,
+                height: 250,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.colorScheme.primary.withOpacity(isDark ? 0.08 : 0.05),
+                ),
+              ),
+            ),
+            // Radial blur spot 2
+            Positioned(
+              bottom: -60,
+              right: -60,
+              child: Container(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.colorScheme.secondary.withOpacity(isDark ? 0.08 : 0.05),
+                ),
+              ),
+            ),
+            // BackdropFilter blur layer
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 40.0, sigmaY: 40.0),
+                child: const SizedBox.shrink(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    Widget bodyContent;
+    if (_isLoading) {
+      bodyContent = const CustomLoadingIndicator();
+    } else if (_isSearching) {
+      bodyContent = _buildSearchView();
+    } else {
+      bodyContent = Stack(
+        children: [
+          // List and Bottom Bar
+          Column(
+            children: [
+              Expanded(
+                child: ListView.builder(
+                  controller: _scrollController,
+                  reverse: true,
+                  cacheExtent: 5000,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: _groupedItems.length + (_isLoadingMore ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (_isLoadingMore && index == _groupedItems.length) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CustomLoadingIndicator(size: 24, strokeWidth: 2.5),
+                          ),
+                        ),
+                      );
+                    }
+
+                    final item = _groupedItems[_groupedItems.length - 1 - index];
+                    
+                    if (item.isHeader) {
+                      return GestureDetector(
+                        onTap: _showDatePickerAndJump,
+                        child: DateHeader(dateText: item.dateHeader!),
+                      );
+                    } else {
+                      final isTarget = _highlightedMessageId == item.message!.id;
+                      return MessageBubble(
+                        key: isTarget ? _highlightedKey : null,
+                        message: item.message!,
+                        meName: _currentThread.meName,
+                        mediaDirPath: _mediaDirPath,
+                        isHighlighted: isTarget,
+                        onLongPress: () => _deleteMessage(item.message!),
+                      );
+                    }
+                  },
+                ),
+              ),
+              // Bottom Read-Only Bar with Glassmorphic Design
+              GlassContainer(
+                borderRadius: BorderRadius.zero,
+                blurX: 10.0,
+                blurY: 10.0,
+                border: Border(
+                  top: BorderSide(
+                    color: isDark
+                        ? const Color(0xFF2E3B46).withOpacity(0.3)
+                        : Colors.grey[200]!.withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                child: SafeArea(
+                  top: false,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.lock_outline_rounded, size: 16, color: theme.colorScheme.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        "Mode Baca Saja (Read-Only)",
+                        style: TextStyle(
+                          color: isDark ? Colors.grey[300] : Colors.grey[700],
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // Floating Date Header with Glassmorphic Design
+          Positioned(
+            top: 12,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: AnimatedOpacity(
+                opacity: _showFloatingDate ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 300),
+                child: GestureDetector(
+                  onTap: _showDatePickerAndJump,
+                  child: GlassContainer(
+                    borderRadius: BorderRadius.circular(12),
+                    blurX: 8,
+                    blurY: 8,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    child: Text(
+                      _floatingDate,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     return Scaffold(
-      backgroundColor: AppColors.chatBackground,
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        elevation: 1,
-        titleSpacing: 0,
+      backgroundColor: Colors.transparent,
+      appBar: CustomAppBar(
+        automaticallyImplyLeading: false,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () {
             if (_isSearching) {
               setState(() {
@@ -855,53 +1042,48 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             ? TextField(
                 controller: _searchController,
                 autofocus: true,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-                decoration: const InputDecoration(
+                style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 16),
+                decoration: InputDecoration(
                   hintText: "Cari pesan...",
-                  hintStyle: TextStyle(color: Colors.white60),
+                  hintStyle: TextStyle(color: isDark ? Colors.white60 : Colors.black45),
                   border: InputBorder.none,
                 ),
                 onChanged: _onSearchChanged,
               )
             : InkWell(
                 onTap: _showChatOptionsSheet,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
                   child: Row(
                     children: [
-                      CircleAvatar(
+                      UserAvatar(
+                        name: _currentThread.name,
                         radius: 18,
-                        backgroundColor: Colors.white24,
-                        child: Text(
-                          _currentThread.name.isNotEmpty 
-                              ? _currentThread.name.substring(0, 1).toUpperCase()
-                              : 'W',
-                          style: const TextStyle(
-                            color: Colors.white, 
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16
-                          ),
-                        ),
+                        usePrimaryColor: true,
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
                               _currentThread.name,
-                              style: const TextStyle(
-                                fontSize: 16, 
+                              style: TextStyle(
+                                fontSize: 15,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white
+                                color: isDark ? Colors.white : Colors.black87,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 1),
                             Text(
                               "Saya: ${_currentThread.meName}",
-                              style: const TextStyle(fontSize: 11, color: Colors.white70),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark ? Colors.grey[400] : Colors.grey[600],
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ],
@@ -914,7 +1096,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         actions: [
           if (_isSearching)
             IconButton(
-              icon: const Icon(Icons.close, color: Colors.white),
+              icon: const Icon(Icons.close),
               onPressed: () {
                 if (_searchController.text.isNotEmpty) {
                   _searchController.clear();
@@ -932,7 +1114,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             )
           else
             IconButton(
-              icon: const Icon(Icons.search, color: Colors.white),
+              icon: const Icon(Icons.search),
               onPressed: () {
                 setState(() {
                   _isSearching = true;
@@ -941,122 +1123,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             ),
         ],
       ),
-      body: _isLoading
-          ? const CustomLoadingIndicator()
-          : _isSearching
-              ? _buildSearchView()
-              : Stack(
-                  children: [
-                    Column(
-                      children: [
-                        Expanded(
-                          child: ListView.builder(
-                            controller: _scrollController,
-                            reverse: true,
-                            cacheExtent: 5000,
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            itemCount: _groupedItems.length + (_isLoadingMore ? 1 : 0),
-                            itemBuilder: (context, index) {
-                              if (_isLoadingMore && index == _groupedItems.length) {
-                                return const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 12),
-                                  child: Center(
-                                    child: SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CustomLoadingIndicator(size: 24, strokeWidth: 2.5),
-                                    ),
-                                  ),
-                                );
-                              }
-
-                              final item = _groupedItems[_groupedItems.length - 1 - index];
-                              
-                              if (item.isHeader) {
-                                return GestureDetector(
-                                  onTap: _showDatePickerAndJump,
-                                  child: DateHeader(dateText: item.dateHeader!),
-                                );
-                              } else {
-                                final isTarget = _highlightedMessageId == item.message!.id;
-                                return MessageBubble(
-                                  key: isTarget ? _highlightedKey : null,
-                                  message: item.message!,
-                                  meName: _currentThread.meName,
-                                  mediaDirPath: _mediaDirPath,
-                                  isHighlighted: isTarget,
-                                  onLongPress: () => _deleteMessage(item.message!),
-                                );
-                              }
-                            },
-                          ),
-                        ),
-                        Container(
-                          width: double.infinity,
-                          color: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.lock_outline, size: 14, color: Colors.grey[600]),
-                              const SizedBox(width: 6),
-                              Text(
-                                "Mode Baca Saja (Read-Only)",
-                                style: TextStyle(
-                                  color: Colors.grey[600], 
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    Positioned(
-                      top: 12,
-                      left: 0,
-                      right: 0,
-                      child: Center(
-                        child: AnimatedOpacity(
-                          opacity: _showFloatingDate ? 1.0 : 0.0,
-                          duration: const Duration(milliseconds: 300),
-                          child: GestureDetector(
-                            onTap: _showDatePickerAndJump,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xE0DFE9E7),
-                                borderRadius: BorderRadius.circular(8),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.05),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Text(
-                                _floatingDate,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.grey[800],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+      body: Stack(
+        children: [
+          _buildWallpaper(context),
+          bodyContent,
+        ],
+      ),
       floatingActionButton: _messagesOffset > 0
           ? FloatingActionButton.extended(
               onPressed: _loadMessages,
-              backgroundColor: AppColors.primary,
-              icon: const Icon(Icons.arrow_downward, color: Colors.white),
-              label: const Text("Pesan Terbaru", style: TextStyle(color: Colors.white)),
+              backgroundColor: theme.colorScheme.primary,
+              icon: Icon(Icons.arrow_downward, color: theme.colorScheme.onPrimary),
+              label: Text("Pesan Terbaru", style: TextStyle(color: theme.colorScheme.onPrimary)),
             )
           : null,
     );
@@ -1075,79 +1153,74 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   }
 
   void _showChatOptionsSheet() {
+    final theme = Theme.of(context);
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 28,
-              backgroundColor: AppColors.primary,
-              child: Text(
-                _currentThread.name.isNotEmpty
-                    ? _currentThread.name.substring(0, 1).toUpperCase()
-                    : 'W',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 24,
-                ),
+      builder: (context) => SafeArea(
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              UserAvatar(
+                name: _currentThread.name,
+                radius: 32,
+                usePrimaryColor: true,
               ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              _currentThread.name,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "Saya: ${_currentThread.meName}",
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const Divider(height: 24),
-            ListTile(
-              leading: const Icon(Icons.people_outline, color: AppColors.primary),
-              title: const Text("Detail & Penggabungan Kontak"),
-              subtitle: const Text("Kelola pengirim pesan dan perbarui database"),
-              onTap: () {
-                Navigator.pop(context); // Close sheet
-                _showManageSendersDialog();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.calendar_month_outlined, color: AppColors.primary),
-              title: const Text("Lompat ke Tanggal"),
-              subtitle: const Text("Lompat langsung ke tanggal chat tertentu"),
-              onTap: () {
-                Navigator.pop(context); // Close sheet
-                _showDatePickerAndJump();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined, color: AppColors.primary),
-              title: const Text("Media Obrolan"),
-              subtitle: const Text("Lihat berkas gambar, video, audio, dan dokumen"),
-              onTap: () {
-                Navigator.pop(context); // Close sheet
-                if (_mediaDirPath != null) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ChatMediaScreen(
-                        thread: _currentThread,
-                        mediaDirPath: _mediaDirPath!,
+              const SizedBox(height: 12),
+              Text(
+                _currentThread.name,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "Saya: ${_currentThread.meName}",
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const Divider(height: 24),
+              ListTile(
+                leading: Icon(Icons.people_outline, color: theme.colorScheme.primary),
+                title: const Text("Detail & Penggabungan Kontak"),
+                subtitle: const Text("Kelola pengirim pesan dan perbarui database"),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showManageSendersDialog();
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.calendar_month_outlined, color: theme.colorScheme.primary),
+                title: const Text("Lompat ke Tanggal"),
+                subtitle: const Text("Lompat langsung ke tanggal chat tertentu"),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showDatePickerAndJump();
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.photo_library_outlined, color: theme.colorScheme.primary),
+                title: const Text("Media Obrolan"),
+                subtitle: const Text("Lihat berkas gambar, video, audio, dan dokumen"),
+                onTap: () {
+                  Navigator.pop(context);
+                  if (_mediaDirPath != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChatMediaScreen(
+                          thread: _currentThread,
+                          mediaDirPath: _mediaDirPath!,
+                        ),
                       ),
-                    ),
-                  ).then((_) => _refreshThreadDetails());
-                }
-              },
-            ),
-          ],
+                    ).then((_) => _refreshThreadDetails());
+                  }
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

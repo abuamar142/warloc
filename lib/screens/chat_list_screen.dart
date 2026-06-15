@@ -24,6 +24,7 @@ import '../widgets/common/app_choice_chip.dart';
 import '../widgets/common/app_button.dart';
 import 'chat_room_screen.dart';
 import 'security_settings_screen.dart';
+import '../widgets/common/custom_app_bar.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -437,22 +438,17 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text(
-          "Warloc",
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-        backgroundColor: AppColors.primary,
-        elevation: 1,
+      appBar: CustomAppBar(
+        title: const Text("Warloc"),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
+            icon: const Icon(Icons.refresh),
             onPressed: _loadThreads,
           ),
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
+            icon: const Icon(Icons.more_vert),
             onSelected: (value) {
               if (value == 'export') {
                 _exportBackup();
@@ -527,10 +523,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             label: "Impor Chat Sekarang",
                           ),
                         )
-                      : ListView.separated(
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
                           itemCount: _threads.length,
-                          separatorBuilder: (context, index) =>
-                              const Divider(height: 1, indent: 72),
                           itemBuilder: (context, index) {
                             final thread = _threads[index];
                             final lastMsg = _lastMessages[thread.id];

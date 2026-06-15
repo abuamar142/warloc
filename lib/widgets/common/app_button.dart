@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../theme/app_colors.dart';
 
 enum AppButtonVariant { primary, secondary }
 
@@ -19,42 +18,57 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     if (variant == AppButtonVariant.secondary) {
       if (icon != null) {
         return TextButton.icon(
           onPressed: onPressed,
-          icon: Icon(icon, color: Colors.grey),
-          label: Text(label, style: const TextStyle(color: Colors.grey)),
+          icon: Icon(icon, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+          label: Text(
+            label,
+            style: TextStyle(
+              color: isDark ? Colors.grey[300] : Colors.grey[700],
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         );
       }
       return TextButton(
         onPressed: onPressed,
-        child: Text(label, style: const TextStyle(color: Colors.grey)),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isDark ? Colors.grey[300] : Colors.grey[700],
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       );
     }
 
     // Primary
+    final style = ElevatedButton.styleFrom(
+      backgroundColor: theme.colorScheme.primary,
+      foregroundColor: theme.colorScheme.onPrimary,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+    );
+
     if (icon != null) {
       return ElevatedButton.icon(
         onPressed: onPressed,
         icon: Icon(icon),
-        label: Text(label),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
+        label: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+        style: style,
       );
     }
 
     return ElevatedButton(
       onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-      child: Text(label),
+      style: style,
+      child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
     );
   }
 }

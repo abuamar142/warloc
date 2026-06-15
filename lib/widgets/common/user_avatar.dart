@@ -18,19 +18,29 @@ class UserAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String initial = name.isNotEmpty ? name.substring(0, 1).toUpperCase() : '?';
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     Color backgroundColor;
     Color textColor;
 
     if (usePrimaryColor) {
-      backgroundColor = AppColors.primaryLight;
-      textColor = AppColors.primary;
+      backgroundColor = isDark
+          ? theme.colorScheme.primary.withOpacity(0.15)
+          : theme.colorScheme.primary.withOpacity(0.1);
+      textColor = theme.colorScheme.primary;
     } else if (isMe) {
-      backgroundColor = AppColors.myMessageBubble;
-      textColor = AppColors.myAvatarText;
+      backgroundColor = isDark
+          ? theme.colorScheme.secondary.withOpacity(0.2)
+          : AppColors.myMessageBubble;
+      textColor = isDark
+          ? theme.colorScheme.secondary
+          : AppColors.myAvatarText;
     } else {
-      backgroundColor = AppColors.otherAvatarBackground;
-      textColor = Colors.black87;
+      backgroundColor = isDark
+          ? Colors.white.withOpacity(0.08)
+          : AppColors.otherAvatarBackground;
+      textColor = isDark ? Colors.white70 : Colors.black87;
     }
 
     return CircleAvatar(

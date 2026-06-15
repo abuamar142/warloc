@@ -59,38 +59,28 @@ class _AppLockWrapperState extends State<AppLockWrapper> with WidgetsBindingObse
   @override
   Widget build(BuildContext context) {
     if (!_isInitialized) {
-      return const MaterialApp(
-        debugShowCheckedModeBanner: false,
-        home: Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(color: Color(0xFF008069)),
-          ),
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFF008069)),
         ),
       );
     }
 
-    if (_isLocked) {
-      return MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          primaryColor: const Color(0xFF008069),
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF008069),
-            primary: const Color(0xFF008069),
+    return Stack(
+      children: [
+        widget.child,
+        if (_isLocked)
+          Positioned.fill(
+            child: LockScreen(
+              onUnlocked: () {
+                setState(() {
+                  _isLocked = false;
+                });
+                SecurityService.instance.updateLastActiveTime();
+              },
+            ),
           ),
-        ),
-        home: LockScreen(
-          onUnlocked: () {
-            setState(() {
-              _isLocked = false;
-            });
-            SecurityService.instance.updateLastActiveTime();
-          },
-        ),
-      );
-    }
-
-    return widget.child;
+      ],
+    );
   }
 }

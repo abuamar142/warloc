@@ -215,6 +215,17 @@ class MessageBubble extends StatelessWidget {
         ? const EdgeInsets.all(3)
         : const EdgeInsets.symmetric(horizontal: 12, vertical: 6);
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final timestampColor = (isImageOrVideo && !hasCaption)
+        ? Colors.white.withOpacity(0.9)
+        : (isDark ? Colors.white60 : Colors.black54);
+
+    final checkColor = (isImageOrVideo && !hasCaption)
+        ? Colors.lightBlueAccent[100]
+        : (isDark ? Colors.lightBlueAccent[200] : Colors.blue[400]);
+
     // Build the timestamp widget
     Widget timestampWidget = Row(
       mainAxisSize: MainAxisSize.min,
@@ -223,9 +234,7 @@ class MessageBubble extends StatelessWidget {
           _formatTime(message.timestamp),
           style: TextStyle(
             fontSize: 10,
-            color: (isImageOrVideo && !hasCaption)
-                ? Colors.white.withValues(alpha: 0.9)
-                : const Color(0x66000000),
+            color: timestampColor,
           ),
         ),
         if (isMe) ...[
@@ -233,9 +242,7 @@ class MessageBubble extends StatelessWidget {
           Icon(
             Icons.done_all,
             size: 14,
-            color: (isImageOrVideo && !hasCaption)
-                ? Colors.lightBlueAccent[100]
-                : Colors.blue[400],
+            color: checkColor,
           ),
         ],
       ],
@@ -246,12 +253,28 @@ class MessageBubble extends StatelessWidget {
       timestampWidget = Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.4),
+          color: Colors.black.withOpacity(0.4),
           borderRadius: BorderRadius.circular(10),
         ),
         child: timestampWidget,
       );
     }
+
+    // Premium dynamic bubble background colors
+    final bubbleColor = isHighlighted
+        ? (isDark ? const Color(0xFF3E3B1C) : const Color(0xFFFFF9C4))
+        : (isMe
+            ? (isDark ? const Color(0xFF005B41).withOpacity(0.8) : const Color(0xFFDCF8C6))
+            : (isDark ? const Color(0xFF1F2C34) : Colors.white));
+
+    final bubbleBorder = isHighlighted
+        ? Border.all(color: Colors.amber, width: 1.5)
+        : Border.all(
+            color: isDark
+                ? (isMe ? const Color(0xFF007A58).withOpacity(0.3) : const Color(0xFF2E3B46).withOpacity(0.5))
+                : (isMe ? const Color(0xFFC7EBB4) : Colors.grey[200]!),
+            width: 1,
+          );
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -261,27 +284,26 @@ class MessageBubble extends StatelessWidget {
           duration: const Duration(milliseconds: 500),
           curve: Curves.easeOut,
           margin: EdgeInsets.only(
-            top: 3,
-            bottom: 3,
-            left: isMe ? 64 : 16,
-            right: isMe ? 16 : 64,
+            top: 4,
+            bottom: 4,
+            left: isMe ? 64 : 12,
+            right: isMe ? 12 : 64,
           ),
           padding: bubblePadding,
           decoration: BoxDecoration(
-            color: isHighlighted 
-                ? const Color(0xFFFFF9C4) 
-                : (isMe ? const Color(0xFFE7FFDB) : Colors.white),
+            color: bubbleColor,
+            border: bubbleBorder,
             borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(12),
-              topRight: const Radius.circular(12),
-              bottomLeft: isMe ? const Radius.circular(12) : const Radius.circular(0),
-              bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(12),
+              topLeft: Radius.circular(isMe ? 16 : 4),
+              topRight: Radius.circular(isMe ? 4 : 16),
+              bottomLeft: const Radius.circular(16),
+              bottomRight: const Radius.circular(16),
             ),
-            boxShadow: const [
+            boxShadow: [
               BoxShadow(
-                color: Color(0x0D000000),
-                offset: Offset(0, 1),
-                blurRadius: 1,
+                color: isDark ? Colors.transparent : Colors.black.withOpacity(0.03),
+                offset: const Offset(0, 2),
+                blurRadius: 4,
               )
             ],
           ),
@@ -293,10 +315,10 @@ class MessageBubble extends StatelessWidget {
               if (!isMe) ...[
                 Text(
                   message.sender,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
-                    color: Color(0xFF075E54), // Whatsapp dark green for user names
+                    color: isDark ? theme.colorScheme.secondary : const Color(0xFF075E54),
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -310,7 +332,7 @@ class MessageBubble extends StatelessWidget {
                   mediaDirPath: mediaDirPath ?? '',
                   timestampOverlay: (isImageOrVideo && !hasCaption) ? timestampWidget : null,
                 ),
-                if (hasCaption) const SizedBox(height: 4),
+                if (hasCaption) const SizedBox(height: 6),
               ],
 
               // Content text & timestamp layout
@@ -323,7 +345,10 @@ class MessageBubble extends StatelessWidget {
                   children: [
                     _buildRichTextWithLinks(
                       displayContent,
-                      const TextStyle(fontSize: 15, color: Colors.black),
+                      TextStyle(
+                        fontSize: 15,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
                     ),
                     Padding(
                       padding: const EdgeInsets.only(top: 2.0),
