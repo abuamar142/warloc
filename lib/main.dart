@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'screens/chat_list_screen.dart';
+import 'widgets/app_lock_wrapper.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
+  runApp(
+    const AppLockWrapper(
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

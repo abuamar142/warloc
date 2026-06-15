@@ -23,6 +23,7 @@ import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_choice_chip.dart';
 import '../widgets/common/app_button.dart';
 import 'chat_room_screen.dart';
+import 'security_settings_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -457,6 +458,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 _exportBackup();
               } else if (value == 'import') {
                 _importBackup();
+              } else if (value == 'security') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SecuritySettingsScreen()),
+                ).then((_) => _loadThreads());
               }
             },
             itemBuilder: (context) => [
@@ -477,6 +483,16 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     Icon(Icons.restore, color: AppColors.primary),
                     SizedBox(width: 8),
                     Text("Impor Cadangan (.wlb)"),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'security',
+                child: Row(
+                  children: [
+                    Icon(Icons.security, color: AppColors.primary),
+                    SizedBox(width: 8),
+                    Text("Pengaturan Keamanan"),
                   ],
                 ),
               ),
