@@ -47,8 +47,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   static const int _limit = 100;
   int _messagesOffset = 0;
   bool _isLoadingNewer = false;
-  int? _anchorMessageId;
-  final GlobalKey _anchorKey = GlobalKey();
 
   // Cached state
   List<_ChatRoomItem> _groupedItems = [];
@@ -115,18 +113,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   Future<void> _loadNewerMessages() async {
     if (_isLoadingNewer || _messagesOffset <= 0 || _allMessages.isEmpty) return;
 
-    double? originalY;
-    if (_anchorKey.currentContext != null) {
-      final box = _anchorKey.currentContext!.findRenderObject() as RenderBox?;
-      if (box != null && box.hasSize) {
-        originalY = box.localToGlobal(Offset.zero).dy;
-      }
-    }
-
-    setState(() {
-      _isLoadingNewer = true;
-      _anchorMessageId = _allMessages.last.id;
-    });
+    _isLoadingNewer = true;
 
     final db = DatabaseHelper.instance;
     final queryLimit = min(_limit, _messagesOffset);
@@ -139,6 +126,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         newOffset,
       );
 
+      if (!mounted) return;
+
+      final oldMaxScrollExtent = _scrollController.position.maxScrollExtent;
+      final oldOffset = _scrollController.position.pixels;
+
       setState(() {
         _allMessages.addAll(newMessages);
         _filteredMessages = _allMessages;
@@ -149,25 +141,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        if (originalY != null && _anchorKey.currentContext != null) {
-          final box = _anchorKey.currentContext!.findRenderObject() as RenderBox?;
-          if (box != null && box.hasSize) {
-            final newY = box.localToGlobal(Offset.zero).dy;
-            final diff = newY - originalY;
-            if (diff != 0 && _scrollController.hasClients) {
-              _scrollController.jumpTo(_scrollController.offset + diff);
-            }
+        if (_scrollController.hasClients) {
+          final newMaxScrollExtent = _scrollController.position.maxScrollExtent;
+          final diff = newMaxScrollExtent - oldMaxScrollExtent;
+          if (diff != 0) {
+            _scrollController.jumpTo(oldOffset + diff);
           }
         }
-        setState(() {
-          _anchorMessageId = null;
-        });
         _updateFloatingDate();
       });
     } catch (_) {
       setState(() {
         _isLoadingNewer = false;
-        _anchorMessageId = null;
       });
     }
   }
@@ -917,9 +902,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                             reverse: true,
                             cacheExtent: 5000,
                             padding: const EdgeInsets.symmetric(vertical: 8),
-                            itemCount: _groupedItems.length + (_isLoadingMore ? 1 : 0) + (_isLoadingNewer ? 1 : 0),
+                            itemCount: _groupedItems.length + (_isLoadingMore ? 1 : 0),
                             itemBuilder: (context, index) {
-                              if (_isLoadingNewer && index == 0) {
+                              if (_isLoadingMore && index == _groupedItems.length) {
                                 return const Padding(
                                   padding: EdgeInsets.symmetric(vertical: 12),
                                   child: Center(
@@ -932,22 +917,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                 );
                               }
 
-                              final actualItemCount = _groupedItems.length + (_isLoadingMore ? 1 : 0) + (_isLoadingNewer ? 1 : 0);
-                              if (_isLoadingMore && index == actualItemCount - 1) {
-                                return const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 12),
-                                  child: Center(
-                                    child: SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CustomLoadingIndicator(size: 24, strokeWidth: 2.5),
-                                    ),
-                                  ),
-                                );
-                              }
-
-                              final itemIndex = _groupedItems.length - 1 - (index - (_isLoadingNewer ? 1 : 0));
-                              final item = _groupedItems[itemIndex];
+                              final item = _groupedItems[_groupedItems.length - 1 - index];
                               
                               if (item.isHeader) {
                                 return GestureDetector(
@@ -956,13 +926,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                 );
                               } else {
                                 final isTarget = _highlightedMessageId == item.message!.id;
-                                final isAnchor = item.message != null &&
-                                    (item.message!.id == _anchorMessageId ||
-                                     (_anchorMessageId == null && _allMessages.isNotEmpty && item.message!.id == _allMessages.last.id));
                                 return MessageBubble(
-                                  key: isAnchor
-                                      ? _anchorKey
-                                      : (isTarget ? _highlightedKey : null),
+                                  key: isTarget ? _highlightedKey : null,
                                   message: item.message!,
                                   meName: _currentThread.meName,
                                   mediaDirPath: _mediaDirPath,
