@@ -13,12 +13,11 @@ class AppTheme {
         brightness: Brightness.light,
         primary: AppColors.primary,
         secondary: AppColors.accent,
-        background: const Color(0xFFF4F6F8),
         surface: Colors.white,
         onPrimary: Colors.white,
         onSurface: Colors.black87,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: Colors.white,
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -51,12 +50,11 @@ class AppTheme {
         brightness: Brightness.dark,
         primary: AppColors.accent,
         secondary: AppColors.primary,
-        background: const Color(0xFF0B141A),
         surface: const Color(0xFF1F2C34),
         onPrimary: Colors.white,
         onSurface: Colors.white,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: const Color(0xFF1F2C34),
         elevation: 0,
         shape: RoundedRectangleBorder(

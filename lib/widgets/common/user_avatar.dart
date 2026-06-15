@@ -26,19 +26,19 @@ class UserAvatar extends StatelessWidget {
 
     if (usePrimaryColor) {
       backgroundColor = isDark
-          ? theme.colorScheme.primary.withOpacity(0.15)
-          : theme.colorScheme.primary.withOpacity(0.1);
+          ? theme.colorScheme.primary.withValues(alpha: 0.15)
+          : theme.colorScheme.primary.withValues(alpha: 0.1);
       textColor = theme.colorScheme.primary;
     } else if (isMe) {
       backgroundColor = isDark
-          ? theme.colorScheme.secondary.withOpacity(0.2)
+          ? theme.colorScheme.secondary.withValues(alpha: 0.2)
           : AppColors.myMessageBubble;
       textColor = isDark
           ? theme.colorScheme.secondary
           : AppColors.myAvatarText;
     } else {
       backgroundColor = isDark
-          ? Colors.white.withOpacity(0.08)
+          ? Colors.white.withValues(alpha: 0.08)
           : AppColors.otherAvatarBackground;
       textColor = isDark ? Colors.white70 : Colors.black87;
     }

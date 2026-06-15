@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import '../services/security_service.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
-import '../widgets/common/app_text_field.dart';
 import '../theme/app_colors.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
@@ -36,11 +35,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     });
   }
 
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
-    );
-  }
+
 
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -159,7 +154,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
             child: Column(
               children: [
                 SwitchListTile(
-                  activeColor: AppColors.primary,
                   secondary: const Icon(Icons.lock_outline, color: AppColors.primary),
                   title: const Text(
                     "Kunci Aplikasi dengan PIN",
@@ -175,7 +169,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                 if (_isLockEnabled && _canCheckBiometrics) ...[
                   const Divider(height: 1, indent: 56),
                   SwitchListTile(
-                    activeColor: AppColors.primary,
                     secondary: const Icon(Icons.fingerprint, color: AppColors.primary),
                     title: const Text(
                       "Buka Kunci dengan Sidik Jari",

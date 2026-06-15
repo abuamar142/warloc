@@ -333,10 +333,10 @@ class _LockScreenState extends State<LockScreen> {
         width: 72,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
           shape: BoxShape.circle,
           border: Border.all(
-            color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.03),
+            color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.03),
             width: 1,
           ),
         ),
@@ -363,7 +363,7 @@ class _LockScreenState extends State<LockScreen> {
       body: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
         child: Container(
-          color: isDark ? const Color(0xFF0B141A).withOpacity(0.75) : Colors.white.withOpacity(0.75),
+          color: isDark ? const Color(0xFF0B141A).withValues(alpha: 0.75) : Colors.white.withValues(alpha: 0.75),
           child: SafeArea(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

@@ -219,7 +219,7 @@ class MessageBubble extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     final timestampColor = (isImageOrVideo && !hasCaption)
-        ? Colors.white.withOpacity(0.9)
+        ? Colors.white.withValues(alpha: 0.9)
         : (isDark ? Colors.white60 : Colors.black54);
 
     final checkColor = (isImageOrVideo && !hasCaption)
@@ -253,7 +253,7 @@ class MessageBubble extends StatelessWidget {
       timestampWidget = Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.4),
+          color: Colors.black.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(10),
         ),
         child: timestampWidget,
@@ -264,14 +264,14 @@ class MessageBubble extends StatelessWidget {
     final bubbleColor = isHighlighted
         ? (isDark ? const Color(0xFF3E3B1C) : const Color(0xFFFFF9C4))
         : (isMe
-            ? (isDark ? const Color(0xFF005B41).withOpacity(0.8) : const Color(0xFFDCF8C6))
+            ? (isDark ? const Color(0xFF005B41).withValues(alpha: 0.8) : const Color(0xFFDCF8C6))
             : (isDark ? const Color(0xFF1F2C34) : Colors.white));
 
     final bubbleBorder = isHighlighted
         ? Border.all(color: Colors.amber, width: 1.5)
         : Border.all(
             color: isDark
-                ? (isMe ? const Color(0xFF007A58).withOpacity(0.3) : const Color(0xFF2E3B46).withOpacity(0.5))
+                ? (isMe ? const Color(0xFF007A58).withValues(alpha: 0.3) : const Color(0xFF2E3B46).withValues(alpha: 0.5))
                 : (isMe ? const Color(0xFFC7EBB4) : Colors.grey[200]!),
             width: 1,
           );
@@ -301,7 +301,7 @@ class MessageBubble extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: isDark ? Colors.transparent : Colors.black.withOpacity(0.03),
+                color: isDark ? Colors.transparent : Colors.black.withValues(alpha: 0.03),
                 offset: const Offset(0, 2),
                 blurRadius: 4,
               )

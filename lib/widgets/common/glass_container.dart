@@ -31,12 +31,12 @@ class GlassContainer extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     final defaultBgColor = isDark
-        ? const Color(0xFF1A242D).withOpacity(0.65)
-        : Colors.white.withOpacity(0.65);
+        ? const Color(0xFF1A242D).withValues(alpha: 0.65)
+        : Colors.white.withValues(alpha: 0.65);
 
     final defaultBorderColor = isDark
-        ? const Color(0xFF2E3B46).withOpacity(0.4)
-        : Colors.grey[200]!.withOpacity(0.4);
+        ? const Color(0xFF2E3B46).withValues(alpha: 0.4)
+        : Colors.grey[200]!.withValues(alpha: 0.4);
 
     final finalBorder = border ?? Border.all(color: defaultBorderColor, width: 1.5);
     final radius = borderRadius ?? BorderRadius.circular(16);

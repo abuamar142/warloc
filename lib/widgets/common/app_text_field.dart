@@ -33,7 +33,7 @@ class AppTextField extends StatelessWidget {
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         fillColor: theme.brightness == Brightness.dark
-            ? const Color(0xFF2E3B46).withOpacity(0.3)
+            ? const Color(0xFF2E3B46).withValues(alpha: 0.3)
             : Colors.grey[100],
         filled: true,
         border: OutlineInputBorder(

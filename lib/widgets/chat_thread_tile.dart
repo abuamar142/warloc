@@ -35,12 +35,13 @@ class ChatThreadTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(16),
-        border: theme.cardTheme.shape is RoundedRectangleBorder
-            ? (theme.cardTheme.shape as RoundedRectangleBorder).side
+        border: theme.cardTheme.shape is RoundedRectangleBorder &&
+                (theme.cardTheme.shape as RoundedRectangleBorder).side != BorderSide.none
+            ? Border.fromBorderSide((theme.cardTheme.shape as RoundedRectangleBorder).side)
             : Border.all(color: isDark ? const Color(0xFF2E3B46) : Colors.grey[200]!),
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.transparent : Colors.black.withOpacity(0.02),
+            color: isDark ? Colors.transparent : Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -99,8 +100,8 @@ class ChatThreadTile extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: isDark
-                          ? theme.colorScheme.primary.withOpacity(0.15)
-                          : theme.colorScheme.primary.withOpacity(0.08),
+                          ? theme.colorScheme.primary.withValues(alpha: 0.15)
+                          : theme.colorScheme.primary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -120,7 +121,7 @@ class ChatThreadTile extends StatelessWidget {
                       padding: const EdgeInsets.all(4.0),
                       child: Icon(
                         Icons.delete_outline_rounded,
-                        color: Colors.redAccent.withOpacity(0.7),
+                        color: Colors.redAccent.withValues(alpha: 0.7),
                         size: 20,
                       ),
                     ),

@@ -60,10 +60,8 @@ class WhatsAppParser {
       final line = lines[i];
       if (line.trim().isEmpty && currentMessage == null) continue;
 
-      var match = _androidLineStartRegex.firstMatch(line);
-      if (match == null) {
-        match = _iosLineStartRegex.firstMatch(line);
-      }
+      final match = _androidLineStartRegex.firstMatch(line) ??
+          _iosLineStartRegex.firstMatch(line);
 
       if (match != null) {
         // We found a new message line!

@@ -864,7 +864,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 height: 250,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: theme.colorScheme.primary.withOpacity(isDark ? 0.08 : 0.05),
+                  color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.08 : 0.05),
                 ),
               ),
             ),
@@ -877,7 +877,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 height: 200,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: theme.colorScheme.secondary.withOpacity(isDark ? 0.08 : 0.05),
+                  color: theme.colorScheme.secondary.withValues(alpha: isDark ? 0.08 : 0.05),
                 ),
               ),
             ),
@@ -960,8 +960,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 border: Border(
                   top: BorderSide(
                     color: isDark
-                        ? const Color(0xFF2E3B46).withOpacity(0.3)
-                        : Colors.grey[200]!.withOpacity(0.3),
+                        ? const Color(0xFF2E3B46).withValues(alpha: 0.3)
+                        : Colors.grey[200]!.withValues(alpha: 0.3),
                     width: 1.5,
                   ),
                 ),
