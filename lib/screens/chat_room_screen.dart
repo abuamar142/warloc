@@ -46,6 +46,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   bool _hasMoreMessages = true;
   static const int _limit = 100;
   int _messagesOffset = 0;
+  bool _isLoadingNewer = false;
+  int? _anchorMessageId;
+  final GlobalKey _anchorKey = GlobalKey();
 
   // Cached state
   List<_ChatRoomItem> _groupedItems = [];
@@ -98,7 +101,74 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           !_isSearching) {
         _loadMoreMessages();
       }
+      // Trigger load newer when user scrolls near the bottom (which is 0 in reversed list)
+      if (currentScroll <= 100 &&
+          !_isLoadingNewer &&
+          _messagesOffset > 0 &&
+          !_isSearching) {
+        _loadNewerMessages();
+      }
       _updateFloatingDate();
+    }
+  }
+
+  Future<void> _loadNewerMessages() async {
+    if (_isLoadingNewer || _messagesOffset <= 0 || _allMessages.isEmpty) return;
+
+    double? originalY;
+    if (_anchorKey.currentContext != null) {
+      final box = _anchorKey.currentContext!.findRenderObject() as RenderBox?;
+      if (box != null && box.hasSize) {
+        originalY = box.localToGlobal(Offset.zero).dy;
+      }
+    }
+
+    setState(() {
+      _isLoadingNewer = true;
+      _anchorMessageId = _allMessages.last.id;
+    });
+
+    final db = DatabaseHelper.instance;
+    final queryLimit = min(_limit, _messagesOffset);
+    final newOffset = _messagesOffset - queryLimit;
+
+    try {
+      final newMessages = await db.getMessagesForThreadPaginated(
+        _currentThread.id!,
+        queryLimit,
+        newOffset,
+      );
+
+      setState(() {
+        _allMessages.addAll(newMessages);
+        _filteredMessages = _allMessages;
+        _messagesOffset = newOffset;
+        _isLoadingNewer = false;
+        _groupedItems = _buildGroupedItems();
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (originalY != null && _anchorKey.currentContext != null) {
+          final box = _anchorKey.currentContext!.findRenderObject() as RenderBox?;
+          if (box != null && box.hasSize) {
+            final newY = box.localToGlobal(Offset.zero).dy;
+            final diff = newY - originalY;
+            if (diff != 0 && _scrollController.hasClients) {
+              _scrollController.jumpTo(_scrollController.offset + diff);
+            }
+          }
+        }
+        setState(() {
+          _anchorMessageId = null;
+        });
+        _updateFloatingDate();
+      });
+    } catch (_) {
+      setState(() {
+        _isLoadingNewer = false;
+        _anchorMessageId = null;
+      });
     }
   }
 
@@ -847,9 +917,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                             reverse: true,
                             cacheExtent: 5000,
                             padding: const EdgeInsets.symmetric(vertical: 8),
-                            itemCount: _groupedItems.length + (_isLoadingMore ? 1 : 0),
+                            itemCount: _groupedItems.length + (_isLoadingMore ? 1 : 0) + (_isLoadingNewer ? 1 : 0),
                             itemBuilder: (context, index) {
-                              if (_isLoadingMore && index == _groupedItems.length) {
+                              if (_isLoadingNewer && index == 0) {
                                 return const Padding(
                                   padding: EdgeInsets.symmetric(vertical: 12),
                                   child: Center(
@@ -862,7 +932,22 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                 );
                               }
 
-                              final item = _groupedItems[_groupedItems.length - 1 - index];
+                              final actualItemCount = _groupedItems.length + (_isLoadingMore ? 1 : 0) + (_isLoadingNewer ? 1 : 0);
+                              if (_isLoadingMore && index == actualItemCount - 1) {
+                                return const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  child: Center(
+                                    child: SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CustomLoadingIndicator(size: 24, strokeWidth: 2.5),
+                                    ),
+                                  ),
+                                );
+                              }
+
+                              final itemIndex = _groupedItems.length - 1 - (index - (_isLoadingNewer ? 1 : 0));
+                              final item = _groupedItems[itemIndex];
                               
                               if (item.isHeader) {
                                 return GestureDetector(
@@ -871,8 +956,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                 );
                               } else {
                                 final isTarget = _highlightedMessageId == item.message!.id;
+                                final isAnchor = item.message != null &&
+                                    (item.message!.id == _anchorMessageId ||
+                                     (_anchorMessageId == null && _allMessages.isNotEmpty && item.message!.id == _allMessages.last.id));
                                 return MessageBubble(
-                                  key: isTarget ? _highlightedKey : null,
+                                  key: isAnchor
+                                      ? _anchorKey
+                                      : (isTarget ? _highlightedKey : null),
                                   message: item.message!,
                                   meName: _currentThread.meName,
                                   mediaDirPath: _mediaDirPath,
