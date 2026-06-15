@@ -1,5 +1,7 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/chat_message.dart';
 import 'media_bubble_renderer.dart';
 
@@ -42,6 +44,60 @@ class MessageBubble extends StatelessWidget {
     }
     
     return message.content;
+  }
+
+  Widget _buildRichTextWithLinks(String text, TextStyle baseStyle) {
+    final urlRegex = RegExp(
+      r'(https?:\/\/[^\s]+)',
+      caseSensitive: false,
+    );
+
+    final matches = urlRegex.allMatches(text);
+    if (matches.isEmpty) {
+      return Text(text, style: baseStyle);
+    }
+
+    final List<TextSpan> spans = [];
+    int start = 0;
+
+    for (final match in matches) {
+      if (match.start > start) {
+        spans.add(TextSpan(text: text.substring(start, match.start)));
+      }
+
+      final url = match.group(0)!;
+      spans.add(
+        TextSpan(
+          text: url,
+          style: baseStyle.copyWith(
+            color: const Color(0xFF007AFF), // iOS/WhatsApp premium blue for links
+            decoration: TextDecoration.underline,
+          ),
+          recognizer: TapGestureRecognizer()
+            ..onTap = () async {
+              final uri = Uri.tryParse(url);
+              if (uri != null) {
+                try {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } catch (_) {}
+              }
+            },
+        ),
+      );
+
+      start = match.end;
+    }
+
+    if (start < text.length) {
+      spans.add(TextSpan(text: text.substring(start)));
+    }
+
+    return RichText(
+      text: TextSpan(
+        style: baseStyle,
+        children: spans,
+      ),
+    );
   }
 
   @override
@@ -191,7 +247,9 @@ class MessageBubble extends StatelessWidget {
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeOut,
         margin: EdgeInsets.only(
           top: 3,
           bottom: 3,
@@ -253,9 +311,9 @@ class MessageBubble extends StatelessWidget {
                 spacing: 12,
                 runSpacing: 4,
                 children: [
-                  Text(
+                  _buildRichTextWithLinks(
                     displayContent,
-                    style: const TextStyle(fontSize: 15, color: Colors.black),
+                    const TextStyle(fontSize: 15, color: Colors.black),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 2.0),
