@@ -6,6 +6,7 @@ import '../models/chat_thread.dart';
 import '../models/chat_message.dart';
 import '../theme/app_colors.dart';
 import '../utils/date_formatter.dart';
+import '../utils/show_message.dart';
 import '../widgets/common/loading_indicator.dart';
 import '../widgets/common/empty_state_widget.dart';
 import '../widgets/common/custom_app_bar.dart';
@@ -75,9 +76,7 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Gagal memuat media: $e"), backgroundColor: Colors.redAccent),
-      );
+      showErrorSnackBar(context, "Gagal memuat media: $e");
     }
   }
 

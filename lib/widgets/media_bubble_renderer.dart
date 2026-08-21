@@ -7,6 +7,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:video_player/video_player.dart';
 import '../services/audio_playback_service.dart';
 import '../theme/app_colors.dart';
+import '../utils/show_message.dart';
 
 class MediaBubbleRenderer extends StatelessWidget {
   final String mediaPath;
@@ -120,7 +121,9 @@ class MediaBubbleRenderer extends StatelessWidget {
     try {
       final bytes = file.lengthSync();
       sizeStr = _formatBytes(bytes);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint("Gagal membaca ukuran file video '$fileName': $e");
+    }
 
     Widget videoCard = Container(
       width: double.infinity,
@@ -216,7 +219,9 @@ class MediaBubbleRenderer extends StatelessWidget {
     try {
       final bytes = file.lengthSync();
       sizeStr = _formatBytes(bytes);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint("Gagal membaca ukuran file dokumen '$fileName': $e");
+    }
 
     final extension = p.extension(fileName).toUpperCase().replaceAll('.', '');
 
@@ -334,12 +339,7 @@ class MediaBubbleRenderer extends StatelessWidget {
   void _openFile(BuildContext context, String filePath) async {
     final result = await OpenFilex.open(filePath);
     if (result.type != ResultType.done && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Gagal membuka file: ${result.message}"),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      showErrorSnackBar(context, "Gagal membuka file: ${result.message}");
     }
   }
 
@@ -449,12 +449,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Gagal memutar audio: $e"),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        showErrorSnackBar(context, "Gagal memutar audio: $e");
       }
     }
   }
@@ -474,7 +469,9 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
       try {
         final bytes = file.lengthSync();
         sizeStr = MediaBubbleRenderer._formatBytes(bytes);
-      } catch (_) {}
+      } catch (e) {
+        debugPrint("Gagal membaca ukuran file '${widget.filePath}': $e");
+      }
     } else {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),

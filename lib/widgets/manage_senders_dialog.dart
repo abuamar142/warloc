@@ -7,6 +7,7 @@ import 'common/app_text_field.dart';
 import 'common/app_choice_chip.dart';
 import 'common/app_button.dart';
 import 'common/loading_indicator.dart';
+import '../utils/show_message.dart';
 
 class ManageSendersDialog extends StatefulWidget {
   final ChatThread thread;
@@ -66,15 +67,9 @@ class _ManageSendersDialogState extends State<ManageSendersDialog> {
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      _showSnackBar("Gagal memuat pengirim: $e", Colors.redAccent);
+      if (!mounted) return;
+      showErrorSnackBar(context, "Gagal memuat pengirim: $e");
     }
-  }
-
-  void _showSnackBar(String message, Color color) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: color),
-    );
   }
 
   Future<void> _confirmAndSave() async {
@@ -131,14 +126,16 @@ class _ManageSendersDialogState extends State<ManageSendersDialog> {
         senderMappings: finalMappings,
       );
 
-      _showSnackBar("Kontak dan pengirim berhasil digabungkan!", AppColors.primary);
+      if (!mounted) return;
+      showSuccessSnackBar(context, "Kontak dan pengirim berhasil digabungkan!");
       widget.onSuccess();
       if (mounted) {
         Navigator.pop(context); // Close dialog
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      _showSnackBar("Gagal menyimpan perubahan: $e", Colors.redAccent);
+      if (!mounted) return;
+      showErrorSnackBar(context, "Gagal menyimpan perubahan: $e");
     }
   }
 

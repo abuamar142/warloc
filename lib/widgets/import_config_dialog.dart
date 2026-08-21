@@ -3,6 +3,7 @@ import 'package:path/path.dart' as p;
 import '../models/chat_thread.dart';
 import '../models/parsed_chat_result.dart';
 import '../theme/app_colors.dart';
+import '../utils/show_message.dart';
 import 'common/app_dialog.dart';
 import 'common/app_choice_chip.dart';
 import 'common/app_button.dart';
@@ -221,12 +222,7 @@ class _ImportConfigDialogState extends State<ImportConfigDialog> {
                 : _selectedExistingThread?.name ?? "Merged Chat";
             
             if (contactName.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Nama kontak tidak boleh kosong."),
-                  backgroundColor: Colors.redAccent,
-                ),
-              );
+              showErrorSnackBar(context, "Nama kontak tidak boleh kosong.");
               return;
             }
             

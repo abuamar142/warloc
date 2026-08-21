@@ -5,6 +5,7 @@ import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
 import '../widgets/common/app_text_field.dart';
 import '../theme/app_colors.dart';
+import '../utils/show_message.dart';
 
 class LockScreen extends StatefulWidget {
   final VoidCallback onUnlocked;
@@ -201,12 +202,7 @@ class _LockScreenState extends State<LockScreen> {
                     if (isValid) {
                       Navigator.pop(context); // Close dialog
                       widget.onUnlocked(); // Unlock app
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Berhasil masuk. Silakan ubah PIN Anda di pengaturan."),
-                          backgroundColor: AppColors.primary,
-                        ),
-                      );
+                      showSuccessSnackBar(context, "Berhasil masuk. Silakan ubah PIN Anda di pengaturan.");
                     } else {
                       setStateDialog(() {
                         questionErr = "Jawaban salah. Harap coba lagi.";

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import '../models/chat_thread.dart';
@@ -40,7 +41,9 @@ class DatabaseHelper {
     try {
       await db.rawQuery('PRAGMA journal_mode = WAL');
       await db.rawQuery('PRAGMA synchronous = NORMAL');
-    } catch (_) {}
+    } catch (e) {
+      debugPrint("Gagal mengatur mode journal database: $e");
+    }
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -54,7 +57,9 @@ class DatabaseHelper {
         await db.execute(
           'CREATE INDEX IF NOT EXISTS idx_messages_content ON messages (threadId, content)'
         );
-      } catch (_) {}
+      } catch (e) {
+        debugPrint("Gagal membuat indeks pencarian duplikat: $e");
+      }
     }
   }
 

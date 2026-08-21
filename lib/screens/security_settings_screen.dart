@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/security_service.dart';
+import '../utils/show_message.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
 import '../widgets/common/custom_app_bar.dart';
@@ -36,12 +37,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     });
   }
 
-  void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: AppColors.primary),
-    );
-  }
-
   Future<void> _toggleLock(bool enabled) async {
     if (enabled) {
       // Setup PIN and security question
@@ -58,9 +53,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
           question: result['question']!,
           answer: result['answer']!,
         );
-        _showSuccessSnackBar("Kunci PIN berhasil diaktifkan.");
-        _loadSettings();
-      } else {
+        if (!mounted) return;
+        showSuccessSnackBar(context, "Kunci PIN berhasil diaktifkan.");
+        _loadSettings();      } else {
         // User cancelled, keep switch OFF
         setState(() {
           _isLockEnabled = false;
@@ -84,7 +79,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
           question: '',
           answer: '',
         );
-        _showSuccessSnackBar("Kunci PIN berhasil dinonaktifkan.");
+        if (!mounted) return;
+        showSuccessSnackBar(context, "Kunci PIN berhasil dinonaktifkan.");
         _loadSettings();
       } else {
         // User cancelled or validation failed, keep switch ON
@@ -123,7 +119,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
         question: result['question']!,
         answer: result['answer']!,
       );
-      _showSuccessSnackBar("PIN & Pertanyaan Keamanan berhasil diperbarui.");
+      if (!mounted) return;
+      showSuccessSnackBar(context, "PIN & Pertanyaan Keamanan berhasil diperbarui.");
       _loadSettings();
     }
   }

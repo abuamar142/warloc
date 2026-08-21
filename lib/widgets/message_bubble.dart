@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/chat_message.dart';
 import '../theme/app_colors.dart';
+import '../utils/show_message.dart';
 import 'media_bubble_renderer.dart';
 
 class MessageBubble extends StatelessWidget {
@@ -49,7 +50,7 @@ class MessageBubble extends StatelessWidget {
     return message.content;
   }
 
-  Widget _buildRichTextWithLinks(String text, TextStyle baseStyle) {
+  Widget _buildRichTextWithLinks(BuildContext context, String text, TextStyle baseStyle) {
     final urlRegex = RegExp(
       r'(https?:\/\/[^\s]+)',
       caseSensitive: false,
@@ -82,7 +83,11 @@ class MessageBubble extends StatelessWidget {
               if (uri != null) {
                 try {
                   await launchUrl(uri, mode: LaunchMode.externalApplication);
-                } catch (_) {}
+                } catch (e) {
+                  debugPrint("Gagal membuka tautan '$url': $e");
+                  if (!context.mounted) return;
+                  showErrorSnackBar(context, "Gagal membuka tautan: $url");
+                }
               }
             },
         ),
@@ -347,6 +352,7 @@ class MessageBubble extends StatelessWidget {
                   runSpacing: 4,
                   children: [
                     _buildRichTextWithLinks(
+                      context,
                       displayContent,
                       TextStyle(
                         fontSize: 15,

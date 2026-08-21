@@ -21,6 +21,7 @@ import '../widgets/common/loading_indicator.dart';
 import '../widgets/common/empty_state_widget.dart';
 import '../widgets/common/user_avatar.dart';
 import '../utils/date_formatter.dart';
+import '../utils/show_message.dart';
 import 'chat_media_screen.dart';
 
 class ChatRoomScreen extends StatefulWidget {
@@ -296,9 +297,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     
     if (results.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Tidak ada pesan pada atau setelah tanggal tersebut.")),
-        );
+        showInfoSnackBar(context, "Tidak ada pesan pada atau setelah tanggal tersebut.");
       }
       return;
     }
@@ -367,9 +366,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       _loadMessages();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Pesan berhasil dihapus")),
-        );
+        showInfoSnackBar(context, "Pesan berhasil dihapus");
       }
     }
   }

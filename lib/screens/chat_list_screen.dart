@@ -16,6 +16,7 @@ import '../widgets/import_config_dialog.dart';
 import '../services/chat_import_service.dart';
 import '../widgets/import_task_card.dart';
 import '../utils/backup_helper.dart';
+import '../utils/show_message.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/loading_indicator.dart';
 import '../widgets/common/empty_state_widget.dart';
@@ -124,7 +125,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
             isDialogShown = false;
           }
           await tempDirFile.delete(recursive: true);
-          _showErrorSnackBar("Tidak ada file log chat (.txt atau .json) di dalam file zip.");
+          if (!mounted) return;
+          showErrorSnackBar(context, "Tidak ada file log chat (.txt atau .json) di dalam file zip.");
           return;
         }
         targetPathToParse = chatLogPath;
@@ -148,7 +150,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
         if (tempDirPath != null) {
           await Directory(tempDirPath).delete(recursive: true);
         }
-        _showErrorSnackBar(
+        if (!mounted) return;
+        showErrorSnackBar(
+          context,
           "Tidak ada pesan valid yang ditemukan dalam file ini.",
         );
         return;
@@ -160,15 +164,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
         if (isDialogShown) {
           Navigator.pop(context);
         }
-        _showErrorSnackBar("Gagal membaca file: $e");
+        showErrorSnackBar(context, "Gagal membaca file: $e");
       }
     }
-  }
-
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
-    );
   }
 
   void _showImportConfigDialog(
@@ -242,9 +240,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       await DatabaseHelper.instance.deleteThread(thread.id!);
       _loadThreads();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Chat \"${thread.name}\" berhasil dihapus")),
-        );
+        showInfoSnackBar(context, "Chat \"${thread.name}\" berhasil dihapus");
       }
     }
   }
@@ -288,24 +284,21 @@ class _ChatListScreenState extends State<ChatListScreen> {
         if (await tempFile.exists()) {
           await tempFile.delete();
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint("Gagal membersihkan file cadangan sementara: $e");
+      }
 
       if (outputPath == null) return; // User cancelled
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Cadangan data berhasil diekspor!"),
-            backgroundColor: AppColors.primary,
-          ),
-        );
+        showSuccessSnackBar(context, "Cadangan data berhasil diekspor!");
       }
     } catch (e) {
       if (mounted) {
         if (isDialogShown) {
           Navigator.pop(context);
         }
-        _showErrorSnackBar("Gagal mengekspor cadangan: $e");
+        showErrorSnackBar(context, "Gagal mengekspor cadangan: $e");
       }
     }
   }
@@ -416,22 +409,18 @@ class _ChatListScreenState extends State<ChatListScreen> {
       if (success) {
         _loadThreads();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Cadangan data berhasil dipulihkan!"),
-              backgroundColor: AppColors.primary,
-            ),
-          );
+          showSuccessSnackBar(context, "Cadangan data berhasil dipulihkan!");
         }
       } else {
-        _showErrorSnackBar("Gagal memulihkan cadangan. Pastikan format file cadangan valid.");
+        if (!mounted) return;
+        showErrorSnackBar(context, "Gagal memulihkan cadangan. Pastikan format file cadangan valid.");
       }
     } catch (e) {
       if (mounted) {
         if (isDialogShown) {
           Navigator.pop(context); // Dismiss loading dialog
         }
-        _showErrorSnackBar("Gagal mengimpor cadangan: $e");
+        showErrorSnackBar(context, "Gagal mengimpor cadangan: $e");
       }
     }
   }

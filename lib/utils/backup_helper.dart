@@ -82,7 +82,9 @@ class BackupHelper {
       // Attempt to re-open the database anyway to avoid leaving the app in a broken state
       try {
         await DatabaseHelper.instance.database;
-      } catch (_) {}
+      } catch (e) {
+        debugPrint("Gagal membuka kembali database setelah pemulihan gagal: $e");
+      }
       return false;
     }
   }
@@ -239,12 +241,16 @@ class BackupHelper {
       if (tempDb != null) {
         try {
           await tempDb.close();
-        } catch (_) {}
+        } catch (e) {
+          debugPrint("Gagal menutup database sementara: $e");
+        }
       }
       if (tempDir != null && tempDir.existsSync()) {
         try {
           await tempDir.delete(recursive: true);
-        } catch (_) {}
+        } catch (e) {
+          debugPrint("Gagal menghapus direktori sementara: $e");
+        }
       }
       return false;
     }

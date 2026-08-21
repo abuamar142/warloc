@@ -1,4 +1,5 @@
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 
 class AudioPlaybackService {
   static final AudioPlaybackService instance = AudioPlaybackService._internal();
@@ -15,7 +16,9 @@ class AudioPlaybackService {
       try {
         await _activePlayer!.pause();
         _onStopCallback?.call();
-      } catch (_) {}
+      } catch (e) {
+        debugPrint("Gagal menghentikan pemutar audio sebelumnya: $e");
+      }
     }
     _activePlayer = player;
     _onStopCallback = onStop;
