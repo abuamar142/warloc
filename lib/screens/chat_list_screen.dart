@@ -338,9 +338,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               "Bagaimana Anda ingin memulihkan cadangan data ini?",
-              style: TextStyle(fontSize: 14),
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 16),
             AppChoiceChip(
@@ -353,9 +353,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
               },
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               "Menggabungkan riwayat chat tanpa menghapus pesan yang ada. Pesan duplikat akan dilewati secara otomatis.",
-              style: TextStyle(fontSize: 11, color: Colors.grey),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.grey),
             ),
             const SizedBox(height: 16),
             AppChoiceChip(
@@ -368,9 +368,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
               },
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               "PERINGATAN: Menghapus semua chat dan media saat ini, lalu menggantinya secara total dengan isi cadangan.",
-              style: TextStyle(fontSize: 11, color: Colors.redAccent),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.redAccent),
             ),
           ],
         ),

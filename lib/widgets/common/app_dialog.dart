@@ -29,7 +29,7 @@ class AppDialog extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 18),
             ),
           ),
         ],

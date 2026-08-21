@@ -89,9 +89,9 @@ class _ManageSendersDialogState extends State<ManageSendersDialog> {
         icon: Icons.warning_amber_rounded,
         iconColor: Colors.orange,
         title: "Konfirmasi Penggabungan",
-        content: const Text(
+        content: Text(
           "Apakah Anda yakin ingin melakukan penggabungan ini? Perubahan pada nama pengirim dan pesan akan diterapkan secara permanen ke database.",
-          style: TextStyle(fontSize: 14),
+          style: Theme.of(context).textTheme.bodyMedium,
         ),
         actions: [
           AppButton(
@@ -143,6 +143,7 @@ class _ManageSendersDialogState extends State<ManageSendersDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return AppDialog(
       icon: Icons.people_outline,
       iconColor: const Color(0xFF008069),
@@ -160,9 +161,9 @@ class _ManageSendersDialogState extends State<ManageSendersDialog> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Edit Thread Name
-                    const Text(
+                    Text(
                       "Nama Kontak (Lawan Bicara):",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      style: theme.textTheme.titleSmall?.copyWith(fontSize: 13),
                     ),
                     const SizedBox(height: 6),
                     AppTextField(
@@ -178,9 +179,9 @@ class _ManageSendersDialogState extends State<ManageSendersDialog> {
                     const SizedBox(height: 16),
 
                     // Edit Me Name
-                    const Text(
+                    Text(
                       "Nama Saya (Me):",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      style: theme.textTheme.titleSmall?.copyWith(fontSize: 13),
                     ),
                     const SizedBox(height: 6),
                     AppTextField(
@@ -196,21 +197,24 @@ class _ManageSendersDialogState extends State<ManageSendersDialog> {
                     const Divider(height: 32),
 
                     // List of Senders and Mappings
-                    const Text(
+                    Text(
                       "Gabungkan Pengirim Obrolan:",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      style: theme.textTheme.titleSmall,
                     ),
                     const SizedBox(height: 4),
-                    const Text(
+                    Text(
                       "Pilih letak pesan pengirim (Kanan = Saya, Kiri = Kontak).",
-                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                      style: theme.textTheme.labelSmall?.copyWith(color: Colors.grey),
                     ),
                     const SizedBox(height: 12),
 
                     _uniqueSenders.isEmpty
-                        ? const Text(
+                        ? Text(
                             "Tidak ada pengirim terdeteksi di chat ini.",
-                            style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey,
+                              fontStyle: FontStyle.italic,
+                            ),
                           )
                         : Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,10 +231,8 @@ class _ManageSendersDialogState extends State<ManageSendersDialog> {
                                   children: [
                                     Text(
                                       sender,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
-                                      ),
+                                      style: theme.textTheme.titleSmall
+                                          ?.copyWith(fontSize: 13),
                                     ),
                                     const SizedBox(height: 6),
                                     Row(

@@ -65,6 +65,7 @@ class _ImportConfigDialogState extends State<ImportConfigDialog> {
   Widget build(BuildContext context) {
     final fileName = p.basename(widget.filePath);
     final senders = widget.parsedData.uniqueSenders;
+    final theme = Theme.of(context);
 
     return AppDialog(
       icon: Icons.import_export,
@@ -85,11 +86,11 @@ class _ImportConfigDialogState extends State<ImportConfigDialog> {
               style: const TextStyle(fontWeight: FontWeight.w500, color: Color(0xFF008069)),
             ),
             const Divider(height: 24),
-            
+
             if (widget.existingThreads.isNotEmpty) ...[
-              const Text(
+              Text(
                 "Tujuan Import:",
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: theme.textTheme.titleSmall,
               ),
               Row(
                 children: [
@@ -121,9 +122,9 @@ class _ImportConfigDialogState extends State<ImportConfigDialog> {
             ],
 
             if (_createNewThread) ...[
-              const Text(
+              Text(
                 "Nama Kontak / Chat:",
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: theme.textTheme.titleSmall,
               ),
               const SizedBox(height: 6),
               AppTextField(
@@ -131,9 +132,9 @@ class _ImportConfigDialogState extends State<ImportConfigDialog> {
                 hintText: "Masukkan nama kontak",
               ),
             ] else ...[
-              const Text(
+              Text(
                 "Pilih Thread untuk Digabungkan:",
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: theme.textTheme.titleSmall,
               ),
               const SizedBox(height: 6),
               Container(
@@ -166,14 +167,14 @@ class _ImportConfigDialogState extends State<ImportConfigDialog> {
             ],
             
             const SizedBox(height: 16),
-            const Text(
+            Text(
               "Pilih Siapa \"Saya\" (Me):",
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleSmall,
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               "Pesan dari nama ini akan diposisikan di sebelah kanan (hijau).",
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
             ),
             const SizedBox(height: 6),
             senders.isEmpty

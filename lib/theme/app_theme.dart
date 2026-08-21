@@ -1,13 +1,43 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
+import 'app_spacing.dart';
 
 class AppTheme {
+  /// Text theme sized to match the dominant hand-written styles in the app
+  /// (fontSize 12/14/16 literals). Roles not listed here intentionally fall
+  /// back to the Material defaults so framework widgets are unaffected.
+  ///
+  /// No [TextStyle.height]/[TextStyle.letterSpacing] are set so these styles
+  /// behave like the inline literals they replace.
+  static TextTheme _buildTextTheme(Color baseColor) {
+    return TextTheme(
+      // Matches the appBarTheme.titleTextStyle (20 bold).
+      titleLarge: TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+        color: baseColor,
+      ),
+      // Bold labels/section headers (14 bold).
+      titleSmall: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.bold,
+        color: baseColor,
+      ),
+      bodyLarge: TextStyle(fontSize: 16, color: baseColor),
+      bodyMedium: TextStyle(fontSize: 14, color: baseColor),
+      bodySmall: TextStyle(fontSize: 12, color: baseColor),
+      // Small captions (11).
+      labelSmall: TextStyle(fontSize: 11, color: baseColor),
+    );
+  }
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       primaryColor: AppColors.primary,
       scaffoldBackgroundColor: const Color(0xFFF4F6F8),
+      textTheme: _buildTextTheme(Colors.black87),
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
         brightness: Brightness.light,
@@ -21,7 +51,7 @@ class AppTheme {
         color: Colors.white,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadius.card),
           side: BorderSide(color: Colors.grey[200]!, width: 1),
         ),
       ),
@@ -45,6 +75,7 @@ class AppTheme {
       brightness: Brightness.dark,
       primaryColor: AppColors.accent,
       scaffoldBackgroundColor: const Color(0xFF0B141A),
+      textTheme: _buildTextTheme(Colors.white),
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
         brightness: Brightness.dark,
@@ -58,7 +89,7 @@ class AppTheme {
         color: const Color(0xFF1F2C34),
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadius.card),
           side: const BorderSide(color: Color(0xFF2E3B46), width: 1),
         ),
       ),

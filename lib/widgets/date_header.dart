@@ -27,12 +27,11 @@ class DateHeader extends StatelessWidget {
         ),
         child: Text(
           dateText.toUpperCase(),
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey[700],
-            letterSpacing: 0.5,
-          ),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700],
+                letterSpacing: 0.5,
+              ),
         ),
       ),
     );
