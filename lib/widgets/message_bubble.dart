@@ -5,7 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/chat_message.dart';
 import '../theme/app_colors.dart';
 import '../utils/show_message.dart';
-import 'media_bubble_renderer.dart';
+import 'media/media_bubble_renderer.dart';
 
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;
