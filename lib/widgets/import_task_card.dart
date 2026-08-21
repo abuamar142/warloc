@@ -15,6 +15,8 @@ class ImportTaskCard extends StatelessWidget {
     final bool isImporting = task.status == ImportStatus.importing;
     final bool isCompleted = task.status == ImportStatus.completed;
     final bool isFailed = task.status == ImportStatus.failed;
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
 
     Color statusColor = AppColors.primary;
     IconData statusIcon = Icons.downloading;
@@ -34,7 +36,7 @@ class ImportTaskCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -70,10 +72,10 @@ class ImportTaskCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   statusTitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
-                    color: Colors.black87,
+                    color: onSurface,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -81,7 +83,7 @@ class ImportTaskCard extends StatelessWidget {
               ),
               if (!isImporting)
                 IconButton(
-                  icon: const Icon(Icons.close, color: Colors.grey, size: 20),
+                  icon: Icon(Icons.close, color: onSurface.withValues(alpha: 0.5), size: 20),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () {
@@ -109,13 +111,13 @@ class ImportTaskCard extends StatelessWidget {
                   "Baru: ${task.importedCount}  |  Duplikat: ${task.skippedCount}",
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey[600],
+                    color: onSurface.withValues(alpha: 0.5),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 Text(
                   "${(task.progress * 100).toStringAsFixed(1)}%",
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                     color: AppColors.primary,
@@ -128,7 +130,7 @@ class ImportTaskCard extends StatelessWidget {
               "Total diproses: ${task.totalMessages} pesan. Baru: ${task.importedCount}, Duplikat: ${task.skippedCount}.",
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey[700],
+                color: onSurface.withValues(alpha: 0.6),
               ),
             ),
           ] else if (isFailed) ...[

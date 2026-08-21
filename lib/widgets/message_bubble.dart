@@ -105,6 +105,8 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (message.isSystemMessage) {
+      final sysTheme = Theme.of(context);
+      final sysOnSurface = sysTheme.colorScheme.onSurface;
       return Align(
         alignment: Alignment.center,
         child: GestureDetector(
@@ -113,16 +115,16 @@ class MessageBubble extends StatelessWidget {
             margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 32),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFEDF2F4),
+              color: sysTheme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0x0A000000)),
+              border: Border.all(color: sysOnSurface.withValues(alpha: 0.05)),
             ),
             child: Text(
               message.content,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey[700],
+                color: sysOnSurface.withValues(alpha: 0.6),
                 fontWeight: FontWeight.w500,
               ),
             ),
