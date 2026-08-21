@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:video_player/video_player.dart';
 import '../models/chat_message.dart';
+import '../theme/app_colors.dart';
 
 class FullScreenGalleryViewer extends StatefulWidget {
   final List<ChatMessage> mediaMessages;
@@ -173,7 +174,7 @@ class _GalleryVideoPlayerState extends State<GalleryVideoPlayer> {
   Widget build(BuildContext context) {
     if (!_isInitialized) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF00A884)),
+        child: CircularProgressIndicator(color: AppColors.accent),
       );
     }
 

@@ -857,14 +857,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             end: Alignment.bottomRight,
             colors: isDark
                 ? const [
-                    Color(0xFF0B141A),
+                    AppColors.darkBackground,
                     Color(0xFF14222D),
-                    Color(0xFF0B141A),
+                    AppColors.darkBackground,
                   ]
                 : const [
-                    Color(0xFFEDF2F7),
+                    AppColors.chatWallpaperLight,
                     Color(0xFFE2E8F0),
-                    Color(0xFFEDF2F7),
+                    AppColors.chatWallpaperLight,
                   ],
           ),
         ),
@@ -975,7 +975,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 border: Border(
                   top: BorderSide(
                     color: isDark
-                        ? const Color(0xFF2E3B46).withValues(alpha: 0.3)
+                        ? AppColors.darkBorder.withValues(alpha: 0.3)
                         : Colors.grey[200]!.withValues(alpha: 0.3),
                     width: 1.5,
                   ),

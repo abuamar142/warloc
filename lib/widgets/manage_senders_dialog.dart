@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 import '../models/chat_thread.dart';
+import '../theme/app_colors.dart';
 import 'common/app_dialog.dart';
 import 'common/app_text_field.dart';
 import 'common/app_choice_chip.dart';
@@ -130,7 +131,7 @@ class _ManageSendersDialogState extends State<ManageSendersDialog> {
         senderMappings: finalMappings,
       );
 
-      _showSnackBar("Kontak dan pengirim berhasil digabungkan!", const Color(0xFF008069));
+      _showSnackBar("Kontak dan pengirim berhasil digabungkan!", AppColors.primary);
       widget.onSuccess();
       if (mounted) {
         Navigator.pop(context); // Close dialog
@@ -146,7 +147,7 @@ class _ManageSendersDialogState extends State<ManageSendersDialog> {
     final theme = Theme.of(context);
     return AppDialog(
       icon: Icons.people_outline,
-      iconColor: const Color(0xFF008069),
+      iconColor: AppColors.primary,
       title: "Detail Chat & Penggabungan",
       content: _isLoading
           ? const SizedBox(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/chat_message.dart';
+import '../theme/app_colors.dart';
 import 'media_bubble_renderer.dart';
 
 class MessageBubble extends StatelessWidget {
@@ -158,7 +159,7 @@ class MessageBubble extends StatelessWidget {
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
-                      color: Color(0xFF075E54),
+                      color: AppColors.myAvatarText,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -264,16 +265,16 @@ class MessageBubble extends StatelessWidget {
 
     // Premium dynamic bubble background colors
     final bubbleColor = isHighlighted
-        ? (isDark ? const Color(0xFF3E3B1C) : const Color(0xFFFFF9C4))
+        ? (isDark ? const Color(0xFF3E3B1C) : AppColors.highlightBackground)
         : (isMe
-            ? (isDark ? const Color(0xFF005B41).withValues(alpha: 0.8) : const Color(0xFFDCF8C6))
-            : (isDark ? const Color(0xFF1F2C34) : Colors.white));
+            ? (isDark ? const Color(0xFF005B41).withValues(alpha: 0.8) : AppColors.myMessageBubble)
+            : (isDark ? AppColors.darkSurface : Colors.white));
 
     final bubbleBorder = isHighlighted
         ? Border.all(color: Colors.amber, width: 1.5)
         : Border.all(
             color: isDark
-                ? (isMe ? const Color(0xFF007A58).withValues(alpha: 0.3) : const Color(0xFF2E3B46).withValues(alpha: 0.5))
+                ? (isMe ? const Color(0xFF007A58).withValues(alpha: 0.3) : AppColors.darkBorder.withValues(alpha: 0.5))
                 : (isMe ? const Color(0xFFC7EBB4) : Colors.grey[200]!),
             width: 1,
           );
@@ -320,7 +321,7 @@ class MessageBubble extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
-                    color: isDark ? theme.colorScheme.secondary : const Color(0xFF075E54),
+                    color: isDark ? theme.colorScheme.secondary : AppColors.myAvatarText,
                   ),
                 ),
                 const SizedBox(height: 2),

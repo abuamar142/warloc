@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/chat_thread.dart';
 import '../models/chat_message.dart';
+import '../theme/app_colors.dart';
 import '../utils/date_formatter.dart';
 import 'common/user_avatar.dart';
 
@@ -38,7 +39,7 @@ class ChatThreadTile extends StatelessWidget {
         border: theme.cardTheme.shape is RoundedRectangleBorder &&
                 (theme.cardTheme.shape as RoundedRectangleBorder).side != BorderSide.none
             ? Border.fromBorderSide((theme.cardTheme.shape as RoundedRectangleBorder).side)
-            : Border.all(color: isDark ? const Color(0xFF2E3B46) : Colors.grey[200]!),
+            : Border.all(color: isDark ? AppColors.darkBorder : Colors.grey[200]!),
         boxShadow: [
           BoxShadow(
             color: isDark ? Colors.transparent : Colors.black.withValues(alpha: 0.02),

@@ -112,7 +112,7 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
         onTap: () => _openLightbox(msg),
         child: Container(
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF2E3B46) : Colors.grey[200],
+            color: isDark ? AppColors.darkBorder : Colors.grey[200],
             borderRadius: BorderRadius.circular(4),
           ),
           child: ClipRRect(
@@ -166,10 +166,10 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
       return Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1F2C34) : AppColors.audioBubbleBackground,
+          color: isDark ? AppColors.darkSurface : AppColors.audioBubbleBackground,
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
-            color: isDark ? const Color(0xFF2E3B46) : AppColors.primaryTransparent,
+            color: isDark ? AppColors.darkBorder : AppColors.primaryTransparent,
           ),
         ),
         child: Column(
@@ -195,10 +195,10 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
       return Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1F2C34) : Colors.white,
+          color: isDark ? AppColors.darkSurface : Colors.white,
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
-            color: isDark ? const Color(0xFF2E3B46) : Colors.grey[300]!,
+            color: isDark ? AppColors.darkBorder : Colors.grey[300]!,
           ),
         ),
         child: Column(

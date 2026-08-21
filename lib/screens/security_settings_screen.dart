@@ -132,7 +132,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final borderColor = isDark ? const Color(0xFF2E3B46) : Colors.grey[200]!;
+    final borderColor = isDark ? AppColors.darkBorder : Colors.grey[200]!;
 
     return Scaffold(
       appBar: const CustomAppBar(
@@ -233,7 +233,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                     trailing: DropdownButtonHideUnderline(
                       child: DropdownButton<int>(
                         value: _lockTimeoutSeconds,
-                        dropdownColor: isDark ? const Color(0xFF1F2C34) : Colors.white,
+                        dropdownColor: isDark ? AppColors.darkSurface : Colors.white,
                         style: TextStyle(
                           color: isDark ? AppColors.accent : AppColors.primary,
                           fontWeight: FontWeight.bold,
@@ -325,11 +325,11 @@ class _PINSetupDialogState extends State<PINSetupDialog> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: isDark ? const Color(0xFF2E3B46) : Colors.grey[400]!),
+        borderSide: BorderSide(color: isDark ? AppColors.darkBorder : Colors.grey[400]!),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: isDark ? const Color(0xFF2E3B46) : Colors.grey[400]!),
+        borderSide: BorderSide(color: isDark ? AppColors.darkBorder : Colors.grey[400]!),
       ),
       focusedBorder: OutlineInputBorder(
         borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5),
@@ -409,7 +409,7 @@ class _PINSetupDialogState extends State<PINSetupDialog> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
-                  border: Border.all(color: isDark ? const Color(0xFF2E3B46) : Colors.grey[400]!),
+                  border: Border.all(color: isDark ? AppColors.darkBorder : Colors.grey[400]!),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: DropdownButtonHideUnderline(
@@ -559,11 +559,11 @@ class _PINConfirmDialogState extends State<PINConfirmDialog> {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: isDark ? const Color(0xFF2E3B46) : Colors.grey[400]!),
+                  borderSide: BorderSide(color: isDark ? AppColors.darkBorder : Colors.grey[400]!),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: isDark ? const Color(0xFF2E3B46) : Colors.grey[400]!),
+                  borderSide: BorderSide(color: isDark ? AppColors.darkBorder : Colors.grey[400]!),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5),

@@ -363,7 +363,7 @@ class _LockScreenState extends State<LockScreen> {
       body: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
         child: Container(
-          color: isDark ? const Color(0xFF0B141A).withValues(alpha: 0.75) : Colors.white.withValues(alpha: 0.75),
+          color: isDark ? AppColors.darkBackground.withValues(alpha: 0.75) : Colors.white.withValues(alpha: 0.75),
           child: SafeArea(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

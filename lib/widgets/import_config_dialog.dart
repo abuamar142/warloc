@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import '../models/chat_thread.dart';
 import '../models/parsed_chat_result.dart';
+import '../theme/app_colors.dart';
 import 'common/app_dialog.dart';
 import 'common/app_choice_chip.dart';
 import 'common/app_button.dart';
@@ -69,7 +70,7 @@ class _ImportConfigDialogState extends State<ImportConfigDialog> {
 
     return AppDialog(
       icon: Icons.import_export,
-      iconColor: const Color(0xFF008069),
+      iconColor: AppColors.primary,
       title: "Konfigurasi Import",
       content: SingleChildScrollView(
         child: Column(
@@ -83,7 +84,7 @@ class _ImportConfigDialogState extends State<ImportConfigDialog> {
             const SizedBox(height: 4),
             Text(
               "Total pesan terdeteksi: ${widget.parsedData.messages.length}",
-              style: const TextStyle(fontWeight: FontWeight.w500, color: Color(0xFF008069)),
+              style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.primary),
             ),
             const Divider(height: 24),
 

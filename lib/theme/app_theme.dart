@@ -74,23 +74,23 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.dark,
       primaryColor: AppColors.accent,
-      scaffoldBackgroundColor: const Color(0xFF0B141A),
+      scaffoldBackgroundColor: AppColors.darkBackground,
       textTheme: _buildTextTheme(Colors.white),
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
         brightness: Brightness.dark,
         primary: AppColors.accent,
         secondary: AppColors.primary,
-        surface: const Color(0xFF1F2C34),
+        surface: AppColors.darkSurface,
         onPrimary: Colors.white,
         onSurface: Colors.white,
       ),
       cardTheme: CardThemeData(
-        color: const Color(0xFF1F2C34),
+        color: AppColors.darkSurface,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.card),
-          side: const BorderSide(color: Color(0xFF2E3B46), width: 1),
+          side: const BorderSide(color: AppColors.darkBorder, width: 1),
         ),
       ),
       appBarTheme: const AppBarTheme(

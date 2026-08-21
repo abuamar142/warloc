@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/security_service.dart';
+import '../theme/app_colors.dart';
 import 'lock_screen.dart';
 
 class AppLockWrapper extends StatefulWidget {
@@ -63,7 +64,7 @@ class _AppLockWrapperState extends State<AppLockWrapper> with WidgetsBindingObse
     if (!_isInitialized) {
       return const Scaffold(
         body: Center(
-          child: CircularProgressIndicator(color: Color(0xFF008069)),
+          child: CircularProgressIndicator(color: AppColors.primary),
         ),
       );
     }

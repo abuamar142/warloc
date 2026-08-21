@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../../theme/app_colors.dart';
 
 class GlassContainer extends StatelessWidget {
   final Widget child;
@@ -35,7 +36,7 @@ class GlassContainer extends StatelessWidget {
         : Colors.white.withValues(alpha: 0.65);
 
     final defaultBorderColor = isDark
-        ? const Color(0xFF2E3B46).withValues(alpha: 0.4)
+        ? AppColors.darkBorder.withValues(alpha: 0.4)
         : Colors.grey[200]!.withValues(alpha: 0.4);
 
     final finalBorder = border ?? Border.all(color: defaultBorderColor, width: 1.5);

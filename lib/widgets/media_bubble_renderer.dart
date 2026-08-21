@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:video_player/video_player.dart';
 import '../services/audio_playback_service.dart';
+import '../theme/app_colors.dart';
 
 class MediaBubbleRenderer extends StatelessWidget {
   final String mediaPath;
@@ -509,7 +510,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
             onTap: _togglePlay,
             child: CircleAvatar(
               radius: 18,
-              backgroundColor: const Color(0xFF00A884),
+              backgroundColor: AppColors.accent,
               child: Icon(
                 _isPlaying ? Icons.pause : Icons.play_arrow,
                 color: Colors.white,
@@ -529,9 +530,9 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
                     trackHeight: 2,
                     thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
                     overlayShape: const RoundSliderOverlayShape(overlayRadius: 8),
-                    activeTrackColor: const Color(0xFF00A884),
+                    activeTrackColor: AppColors.accent,
                     inactiveTrackColor: Colors.grey[300],
-                    thumbColor: const Color(0xFF00A884),
+                    thumbColor: AppColors.accent,
                   ),
                   child: Slider(
                     min: 0.0,
@@ -565,7 +566,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
                       const Icon(
                         Icons.mic,
                         size: 14,
-                        color: Color(0xFF00A884),
+                        color: AppColors.accent,
                       ),
                     ],
                   ),
@@ -715,7 +716,7 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
               )
             else
               const Center(
-                child: CircularProgressIndicator(color: Color(0xFF00A884)),
+                child: CircularProgressIndicator(color: AppColors.accent),
               ),
 
             // AppBar / Top bar control
@@ -781,9 +782,9 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
                           trackHeight: 3,
                           thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                           overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-                          activeTrackColor: const Color(0xFF00A884),
+                          activeTrackColor: AppColors.accent,
                           inactiveTrackColor: Colors.white24,
-                          thumbColor: const Color(0xFF00A884),
+                          thumbColor: AppColors.accent,
                         ),
                         child: Slider(
                           min: 0.0,
