@@ -475,6 +475,32 @@ class DatabaseHelper {
     });
   }
 
+  /// Applies a sender merge from role-based mappings, as chosen in the
+  /// manage-senders dialog.
+  ///
+  /// [senderRoles] maps each original sender name to its target role:
+  /// `'me'` renames the sender to [newMeName], anything else (typically
+  /// `'contact'`) renames it to [newThreadName]. Thread and message updates
+  /// run in the same transaction as [mergeSenders].
+  Future<void> applySenderMerge({
+    required int threadId,
+    required String newThreadName,
+    required String newMeName,
+    required Map<String, String> senderRoles,
+  }) async {
+    final Map<String, String> senderMappings = {};
+    for (final entry in senderRoles.entries) {
+      senderMappings[entry.key] = (entry.value == 'me') ? newMeName : newThreadName;
+    }
+
+    await mergeSenders(
+      threadId: threadId,
+      newThreadName: newThreadName,
+      newMeName: newMeName,
+      senderMappings: senderMappings,
+    );
+  }
+
   Future<List<ChatMessage>> getMediaMessagesForThread(int threadId) async {
     final db = await instance.database;
     final result = await db.query(

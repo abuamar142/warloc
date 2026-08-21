@@ -111,19 +111,11 @@ class _ManageSendersDialogState extends State<ManageSendersDialog> {
     try {
       final db = DatabaseHelper.instance;
 
-      // Construct final mappings to apply
-      final Map<String, String> finalMappings = {};
-      for (final entry in _senderMappings.entries) {
-        final oldSender = entry.key;
-        final targetRole = entry.value;
-        finalMappings[oldSender] = (targetRole == 'me') ? newMeName : newThreadName;
-      }
-
-      await db.mergeSenders(
+      await db.applySenderMerge(
         threadId: widget.thread.id!,
         newThreadName: newThreadName,
         newMeName: newMeName,
-        senderMappings: finalMappings,
+        senderRoles: _senderMappings,
       );
 
       if (!mounted) return;
