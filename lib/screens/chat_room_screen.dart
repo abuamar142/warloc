@@ -262,13 +262,20 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       firstDate: firstDate,
       lastDate: lastDate,
       builder: (context, child) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-              onSurface: Colors.black87,
-            ),
+            colorScheme: isDark
+                ? ColorScheme.dark(
+                    primary: AppColors.primary,
+                    onPrimary: Colors.white,
+                    onSurface: Colors.white70,
+                  )
+                : ColorScheme.light(
+                    primary: AppColors.primary,
+                    onPrimary: Colors.white,
+                    onSurface: Colors.black87,
+                  ),
           ),
           child: child!,
         );
@@ -596,6 +603,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   }
 
   Widget _buildHistoryList() {
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -604,7 +613,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 "Pencarian Terbaru",
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
@@ -618,11 +627,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     _searchHistory.clear();
                   });
                 },
-                child: const Text(
+                child: Text(
                   "Hapus Semua",
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey,
+                    color: onSurface.withValues(alpha: 0.5),
                   ),
                 ),
               ),
@@ -635,10 +644,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             itemBuilder: (context, index) {
               final query = _searchHistory[index];
               return ListTile(
-                leading: const Icon(Icons.history, color: Colors.grey),
+                leading: Icon(Icons.history, color: onSurface.withValues(alpha: 0.5)),
                 title: Text(query),
                 trailing: IconButton(
-                  icon: const Icon(Icons.clear, size: 18, color: Colors.grey),
+                  icon: Icon(Icons.clear, size: 18, color: onSurface.withValues(alpha: 0.5)),
                   onPressed: () {
                     setState(() {
                       _searchHistory.removeAt(index);
@@ -694,6 +703,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     final query = _searchController.text.trim();
     final timeStr = _formatSearchResultTime(message.timestamp);
     final isMe = message.sender == _currentThread.meName;
+    final theme = Theme.of(context);
 
     return InkWell(
       onTap: () async {
@@ -733,17 +743,17 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     children: [
                       Text(
                         isMe ? 'Saya' : message.sender,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
-                          color: Colors.black87,
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
                       Text(
                         timeStr,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: Colors.grey,
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                         ),
                       ),
                     ],
@@ -760,7 +770,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   }
 
   Widget _buildHighlightedText(String text, String query) {
-    if (query.isEmpty) return Text(text, style: const TextStyle(color: Colors.black87, fontSize: 14));
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
+    final isDark = theme.brightness == Brightness.dark;
+    final highlightBg = isDark ? AppColors.highlightBackgroundDark : AppColors.highlightBackground;
+    if (query.isEmpty) return Text(text, style: TextStyle(color: onSurface, fontSize: 14));
 
     final List<TextSpan> spans = [];
     final lowercaseText = text.toLowerCase();
@@ -780,9 +794,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
       spans.add(TextSpan(
         text: text.substring(index, index + query.length),
-        style: const TextStyle(
-          backgroundColor: AppColors.highlightBackground,
-          color: Colors.black,
+        style: TextStyle(
+          backgroundColor: highlightBg,
+          color: onSurface,
           fontWeight: FontWeight.bold,
         ),
       ));
@@ -792,7 +806,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
     return RichText(
       text: TextSpan(
-        style: const TextStyle(color: Colors.black87, fontSize: 14),
+        style: TextStyle(color: onSurface, fontSize: 14),
         children: spans,
       ),
       maxLines: 2,
@@ -805,29 +819,30 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   Widget _buildSearchView() {
     final query = _searchController.text.trim();
+    final bgColor = Theme.of(context).colorScheme.surface;
     if (query.length < 3) {
       return Container(
-        color: Colors.white,
+        color: bgColor,
         child: _searchHistory.isEmpty ? _buildHistoryEmptyState() : _buildHistoryList(),
       );
     }
 
     if (_isSearchingDb) {
       return Container(
-        color: Colors.white,
+        color: bgColor,
         child: _buildSearchLoadingState(),
       );
     }
 
     if (_searchResults.isEmpty) {
       return Container(
-        color: Colors.white,
+        color: bgColor,
         child: _buildSearchEmptyState(),
       );
     }
 
     return Container(
-      color: Colors.white,
+      color: bgColor,
       child: _buildSearchResultsList(),
     );
   } Widget _buildWallpaper(BuildContext context) {

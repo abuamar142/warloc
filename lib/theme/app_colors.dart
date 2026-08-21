@@ -14,6 +14,7 @@ class AppColors {
   static const Color otherAvatarBackground = Color(0xFFE0E0E0);
   
   static const Color highlightBackground = Color(0xFFFFF9C4);
+  static const Color highlightBackgroundDark = Color(0xFF5C4B00);
   
   static const Color audioBubbleBackground = Color(0xFFE7FFDB);
 }
