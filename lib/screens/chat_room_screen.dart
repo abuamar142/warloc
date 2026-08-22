@@ -14,15 +14,15 @@ import 'package:warloc/data/database_helper.dart';
 import 'package:warloc/models/chat_thread.dart';
 import 'package:warloc/models/chat_message.dart';
 import 'package:warloc/core/widgets/molecules/date_header.dart';
-import '../widgets/message_bubble.dart';
-import '../widgets/manage_senders_dialog.dart';
-import '../widgets/chat_search_view.dart';
+import 'package:warloc/widgets/message_bubble.dart';
+import 'package:warloc/widgets/manage_senders_dialog.dart';
+import 'package:warloc/widgets/chat_search_view.dart';
 import 'package:warloc/core/theme/app_colors.dart';
 import 'package:warloc/core/widgets/atoms/loading_indicator.dart';
 import 'package:warloc/core/widgets/atoms/user_avatar.dart';
 import 'package:warloc/utils/date_formatter.dart';
 import 'package:warloc/utils/show_message.dart';
-import 'chat_media_screen.dart';
+import 'package:warloc/screens/chat_media_screen.dart';
 
 class ChatRoomScreen extends StatefulWidget {
   final ChatThread thread;
@@ -247,12 +247,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: isDark
-                ? ColorScheme.dark(
+                ? const ColorScheme.dark(
                     primary: AppColors.primary,
                     onPrimary: Colors.white,
                     onSurface: Colors.white70,
                   )
-                : ColorScheme.light(
+                : const ColorScheme.light(
                     primary: AppColors.primary,
                     onPrimary: Colors.white,
                     onSurface: Colors.black87,

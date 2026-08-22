@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'app_colors.dart';
-import 'app_spacing.dart';
+import 'package:warloc/core/theme/app_colors.dart';
+import 'package:warloc/core/theme/app_spacing.dart';
 
 class AppTheme {
   /// Text theme sized to match the dominant hand-written styles in the app

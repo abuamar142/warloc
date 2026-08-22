@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:warloc/utils/show_message.dart';
-import 'audio_player_widget.dart';
-import 'media_viewer_screen.dart';
-import 'video_player_view.dart';
+import 'package:warloc/core/widgets/media/audio_player_widget.dart';
+import 'package:warloc/core/widgets/media/media_viewer_screen.dart';
+import 'package:warloc/core/widgets/media/video_player_view.dart';
 
 class MediaBubbleRenderer extends StatelessWidget {
   final String mediaPath;

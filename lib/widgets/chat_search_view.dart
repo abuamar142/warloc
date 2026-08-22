@@ -254,7 +254,7 @@ class _ChatSearchViewState extends State<ChatSearchView> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+              const Text(
                 "Pencarian Terbaru",
                 style: TextStyle(
                   fontWeight: FontWeight.bold,

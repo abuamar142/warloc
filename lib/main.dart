@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:warloc/screens/chat_list_screen.dart';
-import 'widgets/app_lock_wrapper.dart';
+import 'package:warloc/widgets/app_lock_wrapper.dart';
 import 'package:warloc/core/theme/app_theme.dart';
 
 void main() {

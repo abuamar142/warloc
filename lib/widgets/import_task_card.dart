@@ -117,7 +117,7 @@ class ImportTaskCard extends StatelessWidget {
                 ),
                 Text(
                   "${(task.progress * 100).toStringAsFixed(1)}%",
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                     color: AppColors.primary,

@@ -10,19 +10,24 @@
 include: package:flutter_lints/flutter.yaml
 
 linter:
-  # The lint rules applied to this project can be customized in the
-  # section below to disable rules from the `package:flutter_lints/flutter.yaml`
-  # included above or to enable additional rules. A list of all available lints
-  # and their documentation is published at https://dart.dev/lints.
-  #
-  # Instead of disabling a lint rule for the entire project in the
-  # section below, it can also be suppressed for a single line of code
-  # or a specific dart file by using the `// ignore: name_of_lint` and
-  # `// ignore_for_file: name_of_lint` syntax on the line or in the file
-  # producing the lint.
   rules:
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
-    # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
+    # --- Warloc enforced lints (S11) ---
+    avoid_print: true
+    empty_catches: true
+    avoid_relative_lib_imports: true
+    prefer_const_constructors: true
+    prefer_const_literals_to_create_immutables: true
+    use_key_in_widget_constructors: true
+    cancel_subscriptions: true
+    close_sinks: true
+    # Color guard: all Color(0x...) literals must live in lib/core/theme/
+    # (single-use inlines documented inline with justification; grep CI guard:
+    #   ! grep -r "Color(0x" lib --include="*.dart" | grep -v "lib/core/theme" | grep -v "0xFF007AFF" | grep -v "0x66000000" && echo ok
+    #  Known single-use inlines outside core/theme are intentional:
+    #   - chat_room_screen: wallpaper gradient 0xFF14222D/0xFFE2E8F0
+    #   - message_bubble: link blue 0xFF007AFF, shadow 0x66000000, bubble tints
+    #   - glass_container/date_header: translucency variants
+    #  New duplicates (≥2 uses) must be promoted to AppColors.)
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

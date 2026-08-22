@@ -11,19 +11,19 @@ import 'package:warloc/models/parsed_chat_result.dart';
 import 'package:warloc/utils/whatsapp_parser.dart';
 import 'package:warloc/utils/telegram_parser.dart';
 import 'package:warloc/utils/media_helper.dart';
-import '../widgets/chat_thread_tile.dart';
-import '../widgets/import_config_dialog.dart';
+import 'package:warloc/widgets/chat_thread_tile.dart';
+import 'package:warloc/widgets/import_config_dialog.dart';
 import 'package:warloc/services/backup_service.dart';
 import 'package:warloc/services/chat_import_service.dart';
-import '../widgets/import_task_card.dart';
+import 'package:warloc/widgets/import_task_card.dart';
 import 'package:warloc/utils/show_message.dart';
 import 'package:warloc/core/theme/app_colors.dart';
 import 'package:warloc/core/widgets/atoms/loading_indicator.dart';
 import 'package:warloc/core/widgets/molecules/empty_state_widget.dart';
 import 'package:warloc/core/widgets/molecules/app_dialog.dart';
 import 'package:warloc/core/widgets/atoms/app_button.dart';
-import 'chat_room_screen.dart';
-import 'security_settings_screen.dart';
+import 'package:warloc/screens/chat_room_screen.dart';
+import 'package:warloc/screens/security_settings_screen.dart';
 import 'package:warloc/core/widgets/molecules/custom_app_bar.dart';
 
 class ChatListScreen extends StatefulWidget {

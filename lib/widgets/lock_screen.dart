@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:warloc/services/security_service.dart';
-import 'security/lock_recovery_dialogs.dart';
+import 'package:warloc/widgets/security/lock_recovery_dialogs.dart';
 import 'package:warloc/core/theme/app_colors.dart';
 
 class LockScreen extends StatefulWidget {

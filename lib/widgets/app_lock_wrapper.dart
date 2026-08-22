@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:warloc/services/security_service.dart';
 import 'package:warloc/core/theme/app_colors.dart';
-import 'lock_screen.dart';
+import 'package:warloc/widgets/lock_screen.dart';
 
 class AppLockWrapper extends StatefulWidget {
   final Widget child;

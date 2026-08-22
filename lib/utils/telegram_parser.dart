@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:warloc/models/parsed_chat_result.dart';
-import 'media_helper.dart';
+import 'package:warloc/utils/media_helper.dart';
 
 class TelegramParser {
   static Future<ParsedChatResult> parseFile(String filePath) async {
