@@ -10,7 +10,7 @@ import '../utils/show_message.dart';
 import '../widgets/common/loading_indicator.dart';
 import '../widgets/common/empty_state_widget.dart';
 import '../widgets/common/custom_app_bar.dart';
-import '../widgets/full_screen_gallery_viewer.dart';
+import '../widgets/media/media_viewer_screen.dart';
 
 class ChatMediaScreen extends StatefulWidget {
   final ChatThread thread;
@@ -89,7 +89,7 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => FullScreenGalleryViewer(
+        builder: (context) => MediaViewerScreen.gallery(
           mediaMessages: _mediaMessages,
           initialIndex: index,
           mediaDirPath: widget.mediaDirPath,

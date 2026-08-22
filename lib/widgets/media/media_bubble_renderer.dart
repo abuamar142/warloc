@@ -4,8 +4,8 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import '../../utils/show_message.dart';
 import 'audio_player_widget.dart';
-import 'full_screen_image_viewer.dart';
-import 'full_screen_video_player.dart';
+import 'media_viewer_screen.dart';
+import 'video_player_view.dart';
 
 class MediaBubbleRenderer extends StatelessWidget {
   final String mediaPath;
@@ -78,7 +78,7 @@ class MediaBubbleRenderer extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => FullScreenImageViewer(
+            builder: (context) => MediaViewerScreen.single(
               filePath: filePath,
               fileName: fileName,
             ),
@@ -196,7 +196,7 @@ class MediaBubbleRenderer extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => FullScreenVideoPlayer(
+            builder: (context) => VideoPlayerView(
               filePath: filePath,
               fileName: fileName,
             ),
