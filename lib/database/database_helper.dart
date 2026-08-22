@@ -29,7 +29,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _createDB,
       onConfigure: _onConfigure,
       onUpgrade: _onUpgrade,
@@ -59,6 +59,18 @@ class DatabaseHelper {
         );
       } catch (e) {
         debugPrint("Gagal membuat indeks pencarian duplikat: $e");
+      }
+    }
+    if (oldVersion < 4) {
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS search_history (
+            query TEXT PRIMARY KEY,
+            createdAt INTEGER NOT NULL
+          )
+        ''');
+      } catch (e) {
+        debugPrint("Gagal membuat tabel riwayat pencarian: $e");
       }
     }
   }
@@ -98,6 +110,13 @@ class DatabaseHelper {
     await db.execute(
       'CREATE INDEX idx_messages_content ON messages (threadId, content)'
     );
+
+    await db.execute('''
+      CREATE TABLE search_history (
+        query TEXT PRIMARY KEY,
+        createdAt INTEGER NOT NULL
+      )
+    ''');
   }
 
   // THREAD OPERATIONS
@@ -537,6 +556,44 @@ class DatabaseHelper {
       offset: offset,
     );
     return result.map((json) => ChatMessage.fromMap(json)).toList();
+  }
+
+  // SEARCH HISTORY (S6: persistent, replaces in-memory static list)
+  Future<void> addSearchHistory(String query) async {
+    final q = query.trim();
+    if (q.isEmpty) return;
+    final db = await instance.database;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await db.insert(
+      'search_history',
+      {'query': q, 'createdAt': now},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    // Cap at 20 most recent.
+    await db.rawDelete(
+      'DELETE FROM search_history WHERE query NOT IN '
+      '(SELECT query FROM search_history ORDER BY createdAt DESC LIMIT 20)',
+    );
+  }
+
+  Future<List<String>> getSearchHistory() async {
+    final db = await instance.database;
+    final rows = await db.query(
+      'search_history',
+      columns: ['query'],
+      orderBy: 'createdAt DESC',
+    );
+    return rows.map((r) => r['query'] as String).toList();
+  }
+
+  Future<void> removeSearchHistory(String query) async {
+    final db = await instance.database;
+    await db.delete('search_history', where: 'query = ?', whereArgs: [query]);
+  }
+
+  Future<void> clearSearchHistory() async {
+    final db = await instance.database;
+    await db.delete('search_history');
   }
 
   Future close() async {

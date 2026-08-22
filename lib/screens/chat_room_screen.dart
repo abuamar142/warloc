@@ -16,9 +16,9 @@ import '../models/chat_message.dart';
 import '../widgets/date_header.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/manage_senders_dialog.dart';
+import '../widgets/chat_search_view.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common/loading_indicator.dart';
-import '../widgets/common/empty_state_widget.dart';
 import '../widgets/common/user_avatar.dart';
 import '../utils/date_formatter.dart';
 import '../utils/show_message.dart';
@@ -59,15 +59,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   List<_ChatRoomItem> _groupedItems = [];
   String? _appDocDirPath;
 
-  // Search states
-  static final List<String> _searchHistory = [];
-  final ScrollController _searchScrollController = ScrollController();
-  List<ChatMessage> _searchResults = [];
-  bool _isSearchingDb = false;
-  bool _isLoadingMoreSearch = false;
-  bool _hasMoreSearchResults = true;
-  int _searchOffset = 0;
-  static const int _searchLimit = 20;
   int? _highlightedMessageId;
   final GlobalKey _highlightedKey = GlobalKey();
 
@@ -76,7 +67,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     super.initState();
     _currentThread = widget.thread;
     _scrollController.addListener(_scrollListener);
-    _searchScrollController.addListener(_searchScrollListener);
     // Cache app directory path once — avoid repeated async calls
     getApplicationDocumentsDirectory().then((dir) {
       if (mounted) _appDocDirPath = dir.path;
@@ -88,8 +78,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   void dispose() {
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
-    _searchScrollController.removeListener(_searchScrollListener);
-    _searchScrollController.dispose();
     _searchController.dispose();
     _floatingDateTimer?.cancel();
     super.dispose();
@@ -306,23 +294,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     await _jumpToSearchResultMessage(targetMessageId: targetMsg.id!, timestamp: targetMsg.timestamp);
   }
 
-  void _searchScrollListener() {
-    if (_searchScrollController.hasClients) {
-      final maxScroll = _searchScrollController.position.maxScrollExtent;
-      final currentScroll = _searchScrollController.position.pixels;
-      // Trigger load more when user scrolls near the bottom of search results
-      if (maxScroll - currentScroll <= 100 &&
-          !_isLoadingMoreSearch &&
-          _hasMoreSearchResults &&
-          _isSearching) {
-        final query = _searchController.text.trim();
-        if (query.length >= 3) {
-          _performSearch(query, isInitial: false);
-        }
-      }
-    }
-  }
-
   Future<void> _deleteMessage(ChatMessage message) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -507,71 +478,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     });
   }
 
-  void _onSearchChanged(String query) {
-    if (query.trim().length < 3) {
-      setState(() {
-        _searchResults = [];
-        _isSearchingDb = false;
-        _hasMoreSearchResults = false;
-      });
-      return;
-    }
-    _performSearch(query.trim(), isInitial: true);
-  }
-
-  Future<void> _performSearch(String query, {bool isInitial = false}) async {
-    if (isInitial) {
-      setState(() {
-        _isSearchingDb = true;
-        _searchOffset = 0;
-        _searchResults = [];
-        _hasMoreSearchResults = true;
-      });
-    } else {
-      if (_isLoadingMoreSearch || !_hasMoreSearchResults) return;
-      setState(() {
-        _isLoadingMoreSearch = true;
-      });
-    }
-
-    try {
-      final db = DatabaseHelper.instance;
-      final results = await db.searchMessagesPaginated(
-        threadId: _currentThread.id!,
-        query: query,
-        limit: _searchLimit,
-        offset: _searchOffset,
-      );
-
-      setState(() {
-        if (isInitial) {
-          _searchResults = results;
-          _isSearchingDb = false;
-        } else {
-          _searchResults.addAll(results);
-          _isLoadingMoreSearch = false;
-        }
-        _hasMoreSearchResults = results.length == _searchLimit;
-        _searchOffset += results.length;
-      });
-    } catch (e) {
-      setState(() {
-        _isSearchingDb = false;
-        _isLoadingMoreSearch = false;
-      });
-    }
-  }
-
-  void _applySearchQuery(String query) {
-    _searchController.text = query;
-    _searchController.selection = TextSelection.fromPosition(
-      TextPosition(offset: query.length),
-    );
-    _onSearchChanged(query);
-  }
-
-
-
   String _formatDateHeader(int timestamp) =>
       DateFormatter.formatDateHeader(timestamp);
 
@@ -591,258 +497,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     return items;
   }
 
-  Widget _buildHistoryEmptyState() {
-    return const EmptyStateWidget(
-      icon: Icons.search,
-      title: "Cari Pesan",
-      description: "Masukkan minimal 3 karakter untuk mencari pesan di obrolan ini.",
-    );
-  }
-
-  Widget _buildHistoryList() {
-    final theme = Theme.of(context);
-    final onSurface = theme.colorScheme.onSurface;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 16.0, bottom: 8.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Pencarian Terbaru",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: AppColors.primary,
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    _searchHistory.clear();
-                  });
-                },
-                child: Text(
-                  "Hapus Semua",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: onSurface.withValues(alpha: 0.5),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            itemCount: _searchHistory.length,
-            itemBuilder: (context, index) {
-              final query = _searchHistory[index];
-              return ListTile(
-                leading: Icon(Icons.history, color: onSurface.withValues(alpha: 0.5)),
-                title: Text(query),
-                trailing: IconButton(
-                  icon: Icon(Icons.clear, size: 18, color: onSurface.withValues(alpha: 0.5)),
-                  onPressed: () {
-                    setState(() {
-                      _searchHistory.removeAt(index);
-                    });
-                  },
-                ),
-                onTap: () => _applySearchQuery(query),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSearchLoadingState() {
-    return const CustomLoadingIndicator();
-  }
-
-  Widget _buildSearchEmptyState() {
-    return EmptyStateWidget(
-      icon: Icons.search_off,
-      title: "Tidak Ada Hasil",
-      description: "Tidak ditemukan pesan yang cocok dengan \"${_searchController.text}\".",
-    );
-  }
-
-  Widget _buildSearchResultsList() {
-    return ListView.builder(
-      controller: _searchScrollController,
-      itemCount: _searchResults.length + (_isLoadingMoreSearch ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (_isLoadingMoreSearch && index == _searchResults.length) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Center(
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: CustomLoadingIndicator(size: 24, strokeWidth: 2.5),
-              ),
-            ),
-          );
-        }
-
-        final message = _searchResults[index];
-        return _buildSearchResultTile(message);
-      },
-    );
-  }
-
-  Widget _buildSearchResultTile(ChatMessage message) {
-    final query = _searchController.text.trim();
-    final timeStr = _formatSearchResultTime(message.timestamp);
-    final isMe = message.sender == _currentThread.meName;
-    final theme = Theme.of(context);
-
-    return InkWell(
-      onTap: () async {
-        if (query.isNotEmpty) {
-          setState(() {
-            _searchHistory.remove(query);
-            _searchHistory.insert(0, query);
-            if (_searchHistory.length > 20) {
-              _searchHistory.removeLast();
-            }
-          });
-        }
-
-        setState(() {
-          _isSearching = false;
-        });
-
-        await _jumpToSearchResultMessage(targetMessageId: message.id!, timestamp: message.timestamp);
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            UserAvatar(
-              name: message.sender,
-              radius: 20,
-              isMe: isMe,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        isMe ? 'Saya' : message.sender,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                      Text(
-                        timeStr,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  _buildHighlightedText(message.content, query),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHighlightedText(String text, String query) {
-    final theme = Theme.of(context);
-    final onSurface = theme.colorScheme.onSurface;
-    final isDark = theme.brightness == Brightness.dark;
-    final highlightBg = isDark ? AppColors.highlightBackgroundDark : AppColors.highlightBackground;
-    if (query.isEmpty) return Text(text, style: TextStyle(color: onSurface, fontSize: 14));
-
-    final List<TextSpan> spans = [];
-    final lowercaseText = text.toLowerCase();
-    final lowercaseQuery = query.toLowerCase();
-
-    int start = 0;
-    while (true) {
-      final index = lowercaseText.indexOf(lowercaseQuery, start);
-      if (index == -1) {
-        spans.add(TextSpan(text: text.substring(start)));
-        break;
-      }
-
-      if (index > start) {
-        spans.add(TextSpan(text: text.substring(start, index)));
-      }
-
-      spans.add(TextSpan(
-        text: text.substring(index, index + query.length),
-        style: TextStyle(
-          backgroundColor: highlightBg,
-          color: onSurface,
-          fontWeight: FontWeight.bold,
-        ),
-      ));
-
-      start = index + query.length;
-    }
-
-    return RichText(
-      text: TextSpan(
-        style: TextStyle(color: onSurface, fontSize: 14),
-        children: spans,
-      ),
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-    );
-  }
-
-  String _formatSearchResultTime(int timestamp) =>
-      DateFormatter.formatSearchResultTime(timestamp);
-
-  Widget _buildSearchView() {
-    final query = _searchController.text.trim();
-    final bgColor = Theme.of(context).colorScheme.surface;
-    if (query.length < 3) {
-      return Container(
-        color: bgColor,
-        child: _searchHistory.isEmpty ? _buildHistoryEmptyState() : _buildHistoryList(),
-      );
-    }
-
-    if (_isSearchingDb) {
-      return Container(
-        color: bgColor,
-        child: _buildSearchLoadingState(),
-      );
-    }
-
-    if (_searchResults.isEmpty) {
-      return Container(
-        color: bgColor,
-        child: _buildSearchEmptyState(),
-      );
-    }
-
-    return Container(
-      color: bgColor,
-      child: _buildSearchResultsList(),
-    );
-  } Widget _buildWallpaper(BuildContext context) {
+  Widget _buildWallpaper(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -915,7 +570,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     if (_isLoading) {
       bodyContent = const CustomLoadingIndicator();
     } else if (_isSearching) {
-      bodyContent = _buildSearchView();
+      bodyContent = ChatSearchView(
+        threadId: _currentThread.id!,
+        meName: _currentThread.meName,
+        searchController: _searchController,
+        onResultTap: (message) async {
+          setState(() => _isSearching = false);
+          await _jumpToSearchResultMessage(
+            targetMessageId: message.id!,
+            timestamp: message.timestamp,
+          );
+        },
+      );
     } else {
       bodyContent = Stack(
         children: [
@@ -1060,7 +726,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   hintStyle: TextStyle(color: isDark ? Colors.white60 : Colors.black45),
                   border: InputBorder.none,
                 ),
-                onChanged: _onSearchChanged,
               )
             : InkWell(
                 onTap: _showChatOptionsSheet,
@@ -1112,15 +777,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               onPressed: () {
                 if (_searchController.text.isNotEmpty) {
                   _searchController.clear();
-                  setState(() {
-                    _searchResults = [];
-                    _isSearchingDb = false;
-                  });
                 } else {
-                  setState(() {
-                    _isSearching = false;
-                    _filteredMessages = _allMessages;
-                  });
+                  setState(() => _isSearching = false);
                 }
               },
             )
