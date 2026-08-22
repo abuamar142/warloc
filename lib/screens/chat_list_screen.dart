@@ -181,8 +181,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
         parsedData: parsedData,
         existingThreads: _threads,
         tempDirPath: tempDirPath,
-        onConfirm: (isNew, name, meName, existingThread) {
-          _startImportProcess(
+        onConfirm: (isNew, name, meName, existingThread) async {
+          await _startImportProcess(
             isNew,
             name,
             meName,
@@ -195,15 +195,15 @@ class _ChatListScreenState extends State<ChatListScreen> {
     );
   }
 
-  void _startImportProcess(
+  Future<void> _startImportProcess(
     bool isNew,
     String name,
     String meName,
     ChatThread? existingThread,
     ParsedChatResult parsedData, {
     String? tempDirPath,
-  }) {
-    ChatImportService.instance.startImport(
+  }) async {
+    await ChatImportService.instance.startImport(
       isNew: isNew,
       name: name,
       meName: meName,

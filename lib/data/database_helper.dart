@@ -198,15 +198,18 @@ class DatabaseHelper {
     ChatMessage message, {
     String? threadMeName,
     String? importMeName,
-    Map<String, List<({int timestamp, String sender})>>? duplicateCache,
+    Map<String, List<({int timestamp, String sender, String? mediaPath})>>? duplicateCache,
   }) async {
     // If cache is provided, perform in-memory deduplication checks
     if (duplicateCache != null) {
       if (threadMeName == null || importMeName == null) {
-        final List<({int timestamp, String sender})>? list = duplicateCache[message.content];
+        final List<({int timestamp, String sender, String? mediaPath})>? list = duplicateCache[message.content];
         if (list != null) {
           for (final dup in list) {
             if (dup.timestamp == message.timestamp && dup.sender == message.sender) {
+              if (message.content.trim().length < 2 && (dup.mediaPath ?? '') != (message.mediaPath ?? '')) {
+                continue;
+              }
               return null; // Duplicate found, skip
             }
           }
@@ -215,18 +218,22 @@ class DatabaseHelper {
         duplicateCache.putIfAbsent(message.content, () => []).add((
           timestamp: message.timestamp,
           sender: message.sender,
+          mediaPath: message.mediaPath,
         ));
         return id;
       }
 
       final bool isMessageMe = message.sender == importMeName;
-      final List<({int timestamp, String sender})>? list = duplicateCache[message.content];
+      final List<({int timestamp, String sender, String? mediaPath})>? list = duplicateCache[message.content];
 
       if (list != null) {
         for (final dup in list) {
           final bool isDupMe = dup.sender == threadMeName;
           if (isMessageMe == isDupMe) {
             if ((dup.timestamp - message.timestamp).abs() < 60000) {
+              if (message.content.trim().length < 2 && (dup.mediaPath ?? '') != (message.mediaPath ?? '')) {
+                continue;
+              }
               return null; // Duplicate found, skip
             }
           }
@@ -238,6 +245,7 @@ class DatabaseHelper {
       duplicateCache.putIfAbsent(message.content, () => []).add((
         timestamp: message.timestamp,
         sender: message.sender,
+        mediaPath: message.mediaPath,
       ));
       return id;
     }
@@ -248,10 +256,18 @@ class DatabaseHelper {
         'messages',
         where: 'threadId = ? AND timestamp = ? AND sender = ? AND content = ?',
         whereArgs: [message.threadId, message.timestamp, message.sender, message.content],
-        limit: 1,
+        limit: 10,
       );
       if (duplicate.isNotEmpty) {
-        return null;
+        if (message.content.trim().length < 2) {
+          for (final dup in duplicate) {
+            if ((dup['mediaPath'] ?? '') == (message.mediaPath ?? '')) {
+              return null;
+            }
+          }
+        } else {
+          return null;
+        }
       }
       return await txn.insert('messages', message.toMap());
     }
@@ -272,6 +288,9 @@ class DatabaseHelper {
 
       if (isMessageMe == isDupMe) {
         if ((dupTime - message.timestamp).abs() < 60000) {
+          if (message.content.trim().length < 2 && (dup['mediaPath'] ?? '') != (message.mediaPath ?? '')) {
+            continue;
+          }
           return null;
         }
       }
@@ -284,14 +303,14 @@ class DatabaseHelper {
     List<ChatMessage> messages, {
     String? threadMeName,
     String? importMeName,
-    Map<String, List<({int timestamp, String sender})>>? duplicateCache,
+    Map<String, List<({int timestamp, String sender, String? mediaPath})>>? duplicateCache,
   }) async {
     final db = await instance.database;
     int imported = 0;
     int skipped = 0;
 
     // Load batch-specific duplicate check cache if none provided
-    final Map<String, List<({int timestamp, String sender})>> effectiveCache;
+    final Map<String, List<({int timestamp, String sender, String? mediaPath})>> effectiveCache;
     if (duplicateCache == null && messages.isNotEmpty) {
       final threadId = messages.first.threadId;
       final contents = messages.map((m) => m.content).toList();
@@ -319,7 +338,7 @@ class DatabaseHelper {
     return (imported, skipped);
   }
 
-  Future<Map<String, List<({int timestamp, String sender})>>> loadDuplicateCheckCacheForBatch(
+  Future<Map<String, List<({int timestamp, String sender, String? mediaPath})>>> loadDuplicateCheckCacheForBatch(
     int threadId,
     List<String> contents,
   ) async {
@@ -329,36 +348,38 @@ class DatabaseHelper {
     final placeholders = List.filled(contents.length, '?').join(',');
     final result = await db.query(
       'messages',
-      columns: ['timestamp', 'sender', 'content'],
+      columns: ['timestamp', 'sender', 'content', 'mediaPath'],
       where: 'threadId = ? AND content IN ($placeholders)',
       whereArgs: [threadId, ...contents],
     );
 
-    final Map<String, List<({int timestamp, String sender})>> cache = {};
+    final Map<String, List<({int timestamp, String sender, String? mediaPath})>> cache = {};
     for (final row in result) {
       final content = row['content'] as String;
       final timestamp = row['timestamp'] as int;
       final sender = row['sender'] as String;
-      cache.putIfAbsent(content, () => []).add((timestamp: timestamp, sender: sender));
+      final mediaPath = row['mediaPath'] as String?;
+      cache.putIfAbsent(content, () => []).add((timestamp: timestamp, sender: sender, mediaPath: mediaPath));
     }
     return cache;
   }
 
-  Future<Map<String, List<({int timestamp, String sender})>>> loadDuplicateCheckCache(int threadId) async {
+  Future<Map<String, List<({int timestamp, String sender, String? mediaPath})>>> loadDuplicateCheckCache(int threadId) async {
     final db = await instance.database;
     final result = await db.query(
       'messages',
-      columns: ['timestamp', 'sender', 'content'],
+      columns: ['timestamp', 'sender', 'content', 'mediaPath'],
       where: 'threadId = ?',
       whereArgs: [threadId],
     );
 
-    final Map<String, List<({int timestamp, String sender})>> cache = {};
+    final Map<String, List<({int timestamp, String sender, String? mediaPath})>> cache = {};
     for (final row in result) {
       final content = row['content'] as String;
       final timestamp = row['timestamp'] as int;
       final sender = row['sender'] as String;
-      cache.putIfAbsent(content, () => []).add((timestamp: timestamp, sender: sender));
+      final mediaPath = row['mediaPath'] as String?;
+      cache.putIfAbsent(content, () => []).add((timestamp: timestamp, sender: sender, mediaPath: mediaPath));
     }
     return cache;
   }

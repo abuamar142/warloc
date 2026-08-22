@@ -72,7 +72,7 @@ class ChatImportService extends ChangeNotifier {
     notifyListeners();
 
     // Start background importing execution
-    _runImportTask(
+    await _runImportTask(
       task: task,
       isNew: isNew,
       name: name,
@@ -94,7 +94,7 @@ class ChatImportService extends ChangeNotifier {
   }) async {
     final db = DatabaseHelper.instance;
     int threadId = 0;
-    Map<String, List<({int timestamp, String sender})>>? duplicateCache;
+    Map<String, List<({int timestamp, String sender, String? mediaPath})>>? duplicateCache;
 
     try {
       if (isNew) {
@@ -112,23 +112,27 @@ class ChatImportService extends ChangeNotifier {
       // Copy media files if tempDirPath is provided
       if (tempDirPath != null) {
         try {
-          final tempDir = Directory(tempDirPath);
-          if (await tempDir.exists()) {
+          if (!await Directory(tempDirPath).exists()) {
+            debugPrint("tempDir missing $tempDirPath");
+          } else {
             final targetDir = await MediaHelper.getMediaDirectory(threadId);
-            final entities = tempDir.listSync(recursive: true);
-            for (final entity in entities) {
-              if (entity is File) {
-                final fileName = p.basename(entity.path);
-                // Skip chat log files and hidden files
-                if (fileName.toLowerCase().endsWith('.txt') ||
-                    fileName.startsWith('__MACOSX') ||
-                    fileName.startsWith('.')) {
-                  continue;
-                }
-                final targetPath = p.join(targetDir.path, fileName);
-                await entity.copy(targetPath);
+            if (!await targetDir.exists()) {
+              await targetDir.create(recursive: true);
+            }
+            final files = Directory(tempDirPath).listSync(recursive: true).whereType<File>().toList();
+            int copied = 0;
+            for (final f in files) {
+              final bn = p.basename(f.path);
+              final lower = bn.toLowerCase();
+              if (lower.endsWith('.txt') || lower.endsWith('.json') || bn.startsWith('__MACOSX') || bn.startsWith('.')) continue;
+              try {
+                await f.copy(p.join(targetDir.path, bn));
+                copied++;
+              } catch (e) {
+                debugPrint("Gagal menyalin $bn: $e");
               }
             }
+            debugPrint("media copied $copied to ${targetDir.path}");
           }
         } catch (e) {
           debugPrint("Gagal menyalin file media di background: $e");
