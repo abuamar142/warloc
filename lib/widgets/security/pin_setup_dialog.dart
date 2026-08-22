@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../common/app_dialog.dart';
-import '../common/app_button.dart';
-import '../../theme/app_colors.dart';
+import 'package:warloc/core/widgets/molecules/app_dialog.dart';
+import 'package:warloc/core/widgets/atoms/app_button.dart';
+import 'package:warloc/core/theme/app_colors.dart';
 
 class PINSetupDialog extends StatefulWidget {
   final bool isChanging;

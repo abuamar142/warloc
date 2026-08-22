@@ -5,13 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import '../theme/app_colors.dart';
-import '../utils/backup_helper.dart';
-import '../utils/show_message.dart';
-import '../widgets/common/app_button.dart';
-import '../widgets/common/app_choice_chip.dart';
-import '../widgets/common/app_dialog.dart';
-import '../widgets/common/loading_indicator.dart';
+import 'package:warloc/core/theme/app_colors.dart';
+import 'package:warloc/data/backup_helper.dart';
+import 'package:warloc/utils/show_message.dart';
+import 'package:warloc/core/widgets/atoms/app_button.dart';
+import 'package:warloc/core/widgets/atoms/app_choice_chip.dart';
+import 'package:warloc/core/widgets/molecules/app_dialog.dart';
+import 'package:warloc/core/widgets/atoms/loading_indicator.dart';
 
 /// Orchestrates full-backup export and restore flows.
 ///

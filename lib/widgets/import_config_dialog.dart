@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
-import '../models/chat_thread.dart';
-import '../models/parsed_chat_result.dart';
-import '../theme/app_colors.dart';
-import '../utils/show_message.dart';
-import 'common/app_dialog.dart';
-import 'common/app_choice_chip.dart';
-import 'common/app_button.dart';
-import 'common/app_text_field.dart';
+import 'package:warloc/models/chat_thread.dart';
+import 'package:warloc/models/parsed_chat_result.dart';
+import 'package:warloc/core/theme/app_colors.dart';
+import 'package:warloc/utils/show_message.dart';
+import 'package:warloc/core/widgets/molecules/app_dialog.dart';
+import 'package:warloc/core/widgets/atoms/app_choice_chip.dart';
+import 'package:warloc/core/widgets/atoms/app_button.dart';
+import 'package:warloc/core/widgets/atoms/app_text_field.dart';
 
 class ImportConfigDialog extends StatefulWidget {
   final String filePath;

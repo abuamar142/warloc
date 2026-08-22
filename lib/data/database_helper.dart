@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
-import '../models/chat_thread.dart';
-import '../models/chat_message.dart';
+import 'package:warloc/models/chat_thread.dart';
+import 'package:warloc/models/chat_message.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();

@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as p;
-import '../models/parsed_chat_result.dart';
+import 'package:warloc/models/parsed_chat_result.dart';
 import 'media_helper.dart';
 
 class TelegramParser {

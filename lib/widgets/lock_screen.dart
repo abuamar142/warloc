@@ -1,8 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import '../services/security_service.dart';
+import 'package:warloc/services/security_service.dart';
 import 'security/lock_recovery_dialogs.dart';
-import '../theme/app_colors.dart';
+import 'package:warloc/core/theme/app_colors.dart';
 
 class LockScreen extends StatefulWidget {
   final VoidCallback onUnlocked;

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../theme/app_colors.dart';
-import 'glass_container.dart';
+import 'package:warloc/core/theme/app_colors.dart';
+import 'package:warloc/core/widgets/atoms/glass_container.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Widget title;

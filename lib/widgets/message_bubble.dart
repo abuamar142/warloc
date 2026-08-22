@@ -2,10 +2,10 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../models/chat_message.dart';
-import '../theme/app_colors.dart';
-import '../utils/show_message.dart';
-import 'media/media_bubble_renderer.dart';
+import 'package:warloc/models/chat_message.dart';
+import 'package:warloc/core/theme/app_colors.dart';
+import 'package:warloc/utils/show_message.dart';
+import 'package:warloc/core/widgets/media/media_bubble_renderer.dart';
 
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;

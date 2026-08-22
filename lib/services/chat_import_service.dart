@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
-import '../database/database_helper.dart';
-import '../models/chat_thread.dart';
-import '../models/chat_message.dart';
-import '../models/parsed_chat_result.dart';
-import '../utils/media_helper.dart';
+import 'package:warloc/data/database_helper.dart';
+import 'package:warloc/models/chat_thread.dart';
+import 'package:warloc/models/chat_message.dart';
+import 'package:warloc/models/parsed_chat_result.dart';
+import 'package:warloc/utils/media_helper.dart';
 
 enum ImportStatus { importing, completed, failed }
 

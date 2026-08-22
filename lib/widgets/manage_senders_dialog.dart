@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
-import '../models/chat_thread.dart';
-import '../theme/app_colors.dart';
-import 'common/app_dialog.dart';
-import 'common/app_text_field.dart';
-import 'common/app_choice_chip.dart';
-import 'common/app_button.dart';
-import 'common/loading_indicator.dart';
-import '../utils/show_message.dart';
+import 'package:warloc/data/database_helper.dart';
+import 'package:warloc/models/chat_thread.dart';
+import 'package:warloc/core/theme/app_colors.dart';
+import 'package:warloc/core/widgets/molecules/app_dialog.dart';
+import 'package:warloc/core/widgets/atoms/app_text_field.dart';
+import 'package:warloc/core/widgets/atoms/app_choice_chip.dart';
+import 'package:warloc/core/widgets/atoms/app_button.dart';
+import 'package:warloc/core/widgets/atoms/loading_indicator.dart';
+import 'package:warloc/utils/show_message.dart';
 
 class ManageSendersDialog extends StatefulWidget {
   final ChatThread thread;

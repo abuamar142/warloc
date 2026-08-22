@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../models/chat_thread.dart';
-import '../models/chat_message.dart';
-import '../theme/app_colors.dart';
-import '../utils/date_formatter.dart';
-import 'common/user_avatar.dart';
+import 'package:warloc/models/chat_thread.dart';
+import 'package:warloc/models/chat_message.dart';
+import 'package:warloc/core/theme/app_colors.dart';
+import 'package:warloc/utils/date_formatter.dart';
+import 'package:warloc/core/widgets/atoms/user_avatar.dart';
 
 class ChatThreadTile extends StatelessWidget {
   final ChatThread thread;

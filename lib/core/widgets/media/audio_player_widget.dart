@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
-import '../../services/audio_playback_service.dart';
-import '../../theme/app_colors.dart';
-import '../../utils/show_message.dart';
+import 'package:warloc/services/audio_playback_service.dart';
+import 'package:warloc/core/theme/app_colors.dart';
+import 'package:warloc/utils/show_message.dart';
 
 class AudioPlayerWidget extends StatefulWidget {
   final String filePath;

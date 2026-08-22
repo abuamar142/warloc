@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../common/app_dialog.dart';
-import '../common/app_button.dart';
-import '../../theme/app_colors.dart';
-import '../../services/security_service.dart';
+import 'package:warloc/core/widgets/molecules/app_dialog.dart';
+import 'package:warloc/core/widgets/atoms/app_button.dart';
+import 'package:warloc/core/theme/app_colors.dart';
+import 'package:warloc/services/security_service.dart';
 
 class PINConfirmDialog extends StatefulWidget {
   final String title;

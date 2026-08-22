@@ -1,16 +1,16 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
-import '../database/database_helper.dart';
-import '../models/chat_thread.dart';
-import '../models/chat_message.dart';
-import '../theme/app_colors.dart';
-import '../utils/date_formatter.dart';
-import '../utils/show_message.dart';
-import '../widgets/common/loading_indicator.dart';
-import '../widgets/common/empty_state_widget.dart';
-import '../widgets/common/custom_app_bar.dart';
-import '../widgets/media/media_viewer_screen.dart';
+import 'package:warloc/data/database_helper.dart';
+import 'package:warloc/models/chat_thread.dart';
+import 'package:warloc/models/chat_message.dart';
+import 'package:warloc/core/theme/app_colors.dart';
+import 'package:warloc/utils/date_formatter.dart';
+import 'package:warloc/utils/show_message.dart';
+import 'package:warloc/core/widgets/atoms/loading_indicator.dart';
+import 'package:warloc/core/widgets/molecules/empty_state_widget.dart';
+import 'package:warloc/core/widgets/molecules/custom_app_bar.dart';
+import 'package:warloc/core/widgets/media/media_viewer_screen.dart';
 
 class ChatMediaScreen extends StatefulWidget {
   final ChatThread thread;

@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
-import '../database/database_helper.dart';
+import 'package:warloc/data/database_helper.dart';
 
 class SecurityService {
   static final SecurityService instance = SecurityService._internal();

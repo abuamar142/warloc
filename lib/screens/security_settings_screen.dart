@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../services/security_service.dart';
-import '../utils/show_message.dart';
-import '../widgets/common/custom_app_bar.dart';
+import 'package:warloc/services/security_service.dart';
+import 'package:warloc/utils/show_message.dart';
+import 'package:warloc/core/widgets/molecules/custom_app_bar.dart';
 import '../widgets/security/pin_setup_dialog.dart';
 import '../widgets/security/pin_confirm_dialog.dart';
-import '../theme/app_colors.dart';
+import 'package:warloc/core/theme/app_colors.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
   const SecuritySettingsScreen({super.key});

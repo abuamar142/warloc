@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
-import '../../models/chat_message.dart';
+import 'package:warloc/models/chat_message.dart';
 import 'video_player_view.dart';
 
 /// Unified fullscreen media viewer.

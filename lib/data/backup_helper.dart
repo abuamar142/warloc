@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
-import '../database/database_helper.dart';
-import '../models/chat_message.dart';
+import 'package:warloc/data/database_helper.dart';
+import 'package:warloc/models/chat_message.dart';
 
 class BackupHelper {
   /// Packs the SQLite database and all media files into a ZIP backup at [outputPath]

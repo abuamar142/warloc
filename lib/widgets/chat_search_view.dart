@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
-import '../models/chat_message.dart';
-import '../theme/app_colors.dart';
-import '../utils/date_formatter.dart';
-import 'common/empty_state_widget.dart';
-import 'common/loading_indicator.dart';
-import 'common/user_avatar.dart';
+import 'package:warloc/data/database_helper.dart';
+import 'package:warloc/models/chat_message.dart';
+import 'package:warloc/core/theme/app_colors.dart';
+import 'package:warloc/utils/date_formatter.dart';
+import 'package:warloc/core/widgets/molecules/empty_state_widget.dart';
+import 'package:warloc/core/widgets/atoms/loading_indicator.dart';
+import 'package:warloc/core/widgets/atoms/user_avatar.dart';
 
 /// Search UI extracted from ChatRoomScreen (S6).
 ///
