@@ -223,21 +223,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   Future<void> _showDatePickerAndJump() async {
     final db = DatabaseHelper.instance;
-    final dbInstance = await db.database;
-    final minMax = await dbInstance.rawQuery(
-      'SELECT MIN(timestamp) as minTime, MAX(timestamp) as maxTime FROM messages WHERE threadId = ?',
-      [_currentThread.id],
-    );
-    
+    final bounds = await db.getThreadTimeBounds(_currentThread.id!);
+
     DateTime firstDate = DateTime.now().subtract(const Duration(days: 365 * 5));
     DateTime lastDate = DateTime.now();
-    
-    if (minMax.isNotEmpty) {
-      final minTime = minMax.first['minTime'] as int?;
-      final maxTime = minMax.first['maxTime'] as int?;
-      if (minTime != null) firstDate = DateTime.fromMillisecondsSinceEpoch(minTime);
-      if (maxTime != null) lastDate = DateTime.fromMillisecondsSinceEpoch(maxTime);
-    }
+
+    if (bounds.minTime != null) firstDate = DateTime.fromMillisecondsSinceEpoch(bounds.minTime!);
+    if (bounds.maxTime != null) lastDate = DateTime.fromMillisecondsSinceEpoch(bounds.maxTime!);
     
     if (firstDate.isAfter(lastDate)) {
       firstDate = lastDate.subtract(const Duration(days: 1));
@@ -274,23 +266,16 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     if (selectedDate == null) return;
     
     final startOfDay = DateTime(selectedDate.year, selectedDate.month, selectedDate.day).millisecondsSinceEpoch;
-    
-    final results = await dbInstance.query(
-      'messages',
-      where: 'threadId = ? AND timestamp >= ?',
-      whereArgs: [_currentThread.id, startOfDay],
-      orderBy: 'timestamp ASC',
-      limit: 1,
-    );
-    
-    if (results.isEmpty) {
+
+    final targetMsg = await db.getFirstMessageAtOrAfter(_currentThread.id!, startOfDay);
+
+    if (targetMsg == null) {
       if (mounted) {
         showInfoSnackBar(context, "Tidak ada pesan pada atau setelah tanggal tersebut.");
       }
       return;
     }
-    
-    final targetMsg = ChatMessage.fromMap(results.first);
+
     await _jumpToSearchResultMessage(targetMessageId: targetMsg.id!, timestamp: targetMsg.timestamp);
   }
 

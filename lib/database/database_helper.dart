@@ -540,6 +540,29 @@ class DatabaseHelper {
     return Sqflite.firstIntValue(result) ?? 0;
   }
 
+  Future<({int? minTime, int? maxTime})> getThreadTimeBounds(int threadId) async {
+    final db = await instance.database;
+    final result = await db.rawQuery(
+      'SELECT MIN(timestamp) as minTime, MAX(timestamp) as maxTime FROM messages WHERE threadId = ?',
+      [threadId],
+    );
+    if (result.isEmpty) return (minTime: null, maxTime: null);
+    return (minTime: result.first['minTime'] as int?, maxTime: result.first['maxTime'] as int?);
+  }
+
+  Future<ChatMessage?> getFirstMessageAtOrAfter(int threadId, int timestamp) async {
+    final db = await instance.database;
+    final result = await db.query(
+      'messages',
+      where: 'threadId = ? AND timestamp >= ?',
+      whereArgs: [threadId, timestamp],
+      orderBy: 'timestamp ASC',
+      limit: 1,
+    );
+    if (result.isEmpty) return null;
+    return ChatMessage.fromMap(result.first);
+  }
+
   Future<List<ChatMessage>> searchMessagesPaginated({
     required int threadId,
     required String query,
