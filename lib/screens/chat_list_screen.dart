@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
@@ -39,18 +41,203 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Map<int, int> _messageCounts = {};
   bool _isLoading = true;
   final Set<String> _reloadedTaskIds = {};
+  StreamSubscription<List<SharedMediaFile>>? _shareSub;
+  bool _handlingShare = false;
 
   @override
   void initState() {
     super.initState();
     _loadThreads();
     ChatImportService.instance.addListener(_onImportServiceChanged);
+    _initShareIntent();
   }
 
   @override
   void dispose() {
+    _shareSub?.cancel();
     ChatImportService.instance.removeListener(_onImportServiceChanged);
     super.dispose();
+  }
+
+  void _initShareIntent() {
+    // Cold start: app killed then opened via share
+    ReceiveSharingIntent.instance.getInitialMedia().then((files) {
+      if (files.isNotEmpty && mounted) {
+        debugPrint('[Warloc] getInitialMedia received ${files.length} file(s)');
+        _handleSharedFiles(files);
+      }
+      // Tell the library we have consumed the intent so it is not redelivered.
+      ReceiveSharingIntent.instance.reset();
+    });
+
+    // Warm: app already running (singleTop)
+    _shareSub = ReceiveSharingIntent.instance.getMediaStream().listen(
+      (files) {
+        if (files.isNotEmpty && mounted) {
+          debugPrint('[Warloc] getMediaStream received ${files.length} file(s)');
+          _handleSharedFiles(files);
+        }
+        // Clear stream event after handling
+        ReceiveSharingIntent.instance.reset();
+      },
+      onError: (e) => debugPrint('[Warloc] share stream error $e'),
+    );
+  }
+
+  Future<void> _handleSharedFiles(List<SharedMediaFile> files) async {
+    if (_handlingShare) {
+      debugPrint('[Warloc] _handleSharedFiles skipped — already handling');
+      return;
+    }
+    _handlingShare = true;
+    try {
+      if (!mounted) return;
+      debugPrint('[Warloc] _handleSharedFiles handling ${files.length} file(s)');
+
+      for (final file in files) {
+        if (!mounted) return;
+        final sharedPath = file.path;
+        if (sharedPath.isEmpty) {
+          debugPrint('[Warloc] shared file path empty, skip type=${file.type} mime=${file.mimeType}');
+          continue;
+        }
+
+        debugPrint('[Warloc] processing shared file: $sharedPath type=${file.type} mime=${file.mimeType}');
+
+        final isZip = p.extension(sharedPath).toLowerCase() == '.zip';
+        bool isDialogShown = false;
+        String? tempDirPath;
+        Directory? tempDirFile;
+
+        try {
+          if (!mounted) return;
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const CustomLoadingIndicator(),
+          );
+          isDialogShown = true;
+
+          if (isZip) {
+            final tempDir = await getTemporaryDirectory();
+            tempDirPath = p.join(
+              tempDir.path,
+              'warloc_temp_${DateTime.now().millisecondsSinceEpoch}',
+            );
+            tempDirFile = Directory(tempDirPath);
+            await tempDirFile.create(recursive: true);
+
+            final chatLogPath = await MediaHelper.extractZipAndFindChatLog(
+              sharedPath,
+              tempDirFile,
+            );
+            if (chatLogPath == null) {
+              throw 'Chat log tidak ditemukan di zip';
+            }
+
+            final isJson = chatLogPath.toLowerCase().endsWith('.json');
+            debugPrint('[Warloc] zip extracted chatLog=$chatLogPath isJson=$isJson');
+            final parsed = await compute(
+              isJson ? TelegramParser.parseFileIsolate : WhatsAppParser.parseFileIsolate,
+              chatLogPath,
+            );
+
+            if (!mounted) {
+              if (tempDirFile.existsSync()) {
+                await tempDirFile.delete(recursive: true);
+              }
+              return;
+            }
+            if (isDialogShown && mounted) {
+              Navigator.of(context).pop();
+              isDialogShown = false;
+            }
+
+            if (parsed.messages.isEmpty) {
+              debugPrint('[Warloc] parsed empty messages for $chatLogPath');
+              await tempDirFile.delete(recursive: true);
+              if (!mounted) return;
+              showInfoSnackBar(context, 'Tidak ada pesan valid yang ditemukan dalam file ini.');
+              continue;
+            }
+
+            if (!mounted) return;
+            _showImportConfigDialog(chatLogPath, parsed, tempDirPath: tempDirPath);
+          } else {
+            // Direct txt/json (WA txt export or Telegram json)
+            final isJson = sharedPath.toLowerCase().endsWith('.json');
+            debugPrint('[Warloc] direct file isJson=$isJson path=$sharedPath');
+            final parsed = await compute(
+              isJson ? TelegramParser.parseFileIsolate : WhatsAppParser.parseFileIsolate,
+              sharedPath,
+            );
+
+            if (!mounted) return;
+            if (isDialogShown && mounted) {
+              Navigator.of(context).pop();
+              isDialogShown = false;
+            }
+
+            if (parsed.messages.isEmpty) {
+              debugPrint('[Warloc] parsed empty messages for $sharedPath');
+              if (!mounted) return;
+              showInfoSnackBar(
+                context,
+                'Tidak ada pesan valid yang ditemukan dalam file ini.',
+              );
+              continue;
+            }
+
+            if (!mounted) return;
+            _showImportConfigDialog(sharedPath, parsed);
+          }
+        } catch (e, st) {
+          debugPrint('[Warloc] _handleSharedFiles error for $sharedPath: $e\n$st');
+          if (isDialogShown && mounted) {
+            // Ensure loading is dismissed
+            try {
+              Navigator.of(context).pop();
+            } catch (_) {}
+            isDialogShown = false;
+          }
+          // Cleanup temp dir if created for this file
+          if (tempDirFile != null) {
+            try {
+              if (await tempDirFile.exists()) {
+                await tempDirFile.delete(recursive: true);
+              }
+            } catch (_) {}
+          } else if (tempDirPath != null) {
+            try {
+              final dir = Directory(tempDirPath);
+              if (await dir.exists()) {
+                await dir.delete(recursive: true);
+              }
+            } catch (_) {}
+          }
+          if (!mounted) return;
+          showErrorSnackBar(context, 'Gagal memproses file share: $e');
+        } finally {
+          // Ensure loading dialog is dismissed if still shown and we didn't already
+          if (isDialogShown && mounted) {
+            try {
+              Navigator.of(context).pop();
+            } catch (_) {}
+          }
+        }
+
+        // WA typically sends 1 file; break after first successfully shown config
+        // but continue loop would handle multiple SEND_MULTIPLE. For now process only first
+        // to avoid stacking dialogs. If SEND_MULTIPLE, user can share again.
+        break;
+      }
+    } finally {
+      // Debounce to avoid double handling from both initial + stream on same share
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _handlingShare = false;
+        debugPrint('[Warloc] _handlingShare reset');
+      });
+    }
   }
 
   void _onImportServiceChanged() {
