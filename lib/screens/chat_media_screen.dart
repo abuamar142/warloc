@@ -130,6 +130,15 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
         ),
       );
     } else if (msg.mediaType == 'video') {
+      // No Image.file for video: placeholder card mirroring media_bubble_renderer.dart _buildVideo
+      // Handles .mp4 without decoding to avoid "Invalid image data"
+      String sizeStr = "";
+      if (isExists) {
+        try {
+          final bytes = file.lengthSync();
+          sizeStr = _formatBytes(bytes);
+        } catch (_) {}
+      }
       return GestureDetector(
         onTap: () => _openLightbox(msg),
         child: Container(
@@ -137,27 +146,92 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
             color: Colors.black87,
             borderRadius: BorderRadius.circular(4),
           ),
-          child: Stack(
-            fit: StackFit.expand,
-            alignment: Alignment.center,
-            children: [
-              if (isExists)
-                Opacity(
-                  opacity: 0.6,
-                  child: Image.file(
-                    file,
-                    fit: BoxFit.cover,
-                    cacheWidth: 300,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: Stack(
+              fit: StackFit.expand,
+              alignment: Alignment.center,
+              children: [
+                // Center play icon (mirrors media_bubble_renderer _buildVideo circle+play_arrow)
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.play_arrow,
+                      color: Colors.white,
+                      size: 32,
+                    ),
                   ),
                 ),
-              const Center(
-                child: Icon(
-                  Icons.play_circle_outline,
-                  color: Colors.white,
-                  size: 36,
+                // Defensive fallback for play icon rendered even when file missing
+                // Top header: videocam + filename
+                Positioned(
+                  top: 6,
+                  left: 6,
+                  right: 6,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.videocam, color: Colors.white70, size: 14),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          fileName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                // Bottom: size + centered play_circle fallback icon layer
+                Positioned(
+                  bottom: 6,
+                  left: 6,
+                  right: 6,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      if (sizeStr.isNotEmpty)
+                        Text(
+                          sizeStr,
+                          style: const TextStyle(color: Colors.white70, fontSize: 9),
+                        )
+                      else
+                        const SizedBox.shrink(),
+                      const Icon(Icons.play_circle_outline, color: Colors.white70, size: 14),
+                    ],
+                  ),
+                ),
+                // Missing file overlay (defensive even though no Image.file)
+                if (!isExists)
+                  Container(
+                    color: Colors.black87,
+                    child: const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.videocam_off, color: Colors.white54, size: 28),
+                          SizedBox(height: 4),
+                          Text(
+                            "Video tidak tersedia",
+                            style: TextStyle(color: Colors.white54, fontSize: 9),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       );
@@ -219,6 +293,15 @@ class _ChatMediaScreenState extends State<ChatMediaScreen> {
         ),
       );
     }
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return "0 B";
+    const suffixes = ["B", "KB", "MB", "GB", "TB"];
+    var i = (bytes.toString().length - 1) ~/ 3;
+    if (i >= suffixes.length) i = suffixes.length - 1;
+    final double val = bytes / (1 << (10 * i));
+    return "${val.toStringAsFixed(1)} ${suffixes[i]}";
   }
 
   @override
