@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
@@ -104,7 +105,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
         debugPrint('[Warloc] processing shared file: $sharedPath type=${file.type} mime=${file.mimeType}');
 
-        final isZip = p.extension(sharedPath).toLowerCase() == '.zip';
+        final lowerShared = sharedPath.toLowerCase();
+        final sharedExt = p.extension(lowerShared);
+        final isZipOrWlb = ['.zip', '.wlb'].contains(sharedExt);
         bool isDialogShown = false;
         String? tempDirPath;
         Directory? tempDirFile;
@@ -118,7 +121,32 @@ class _ChatListScreenState extends State<ChatListScreen> {
           );
           isDialogShown = true;
 
-          if (isZip) {
+          // WLB misroute guard: .wlb or .zip containing warloc_chats.db must go to backup restore
+          final lower = sharedPath.toLowerCase();
+          final ext = p.extension(lower);
+          final isWlbByExt = lower.endsWith('.wlb');
+          final isWlbArchive = !isWlbByExt && ext == '.zip' ? await _isWlbArchive(sharedPath) : false;
+          final isWlb = isWlbByExt || isWlbArchive;
+          if (isWlb) {
+            debugPrint('[Warloc] shared file detected as WLB backup: $sharedPath isWlbByExt=$isWlbByExt isWlbArchive=$isWlbArchive');
+            if (isDialogShown && mounted) {
+              try {
+                Navigator.of(context).pop();
+              } catch (_) {}
+              isDialogShown = false;
+            }
+            if (!mounted) return;
+            await BackupService.importBackupWithPath(
+              context,
+              sharedPath,
+              onRestoreSuccess: _loadThreads,
+            );
+            continue;
+          }
+
+          // isZipOrWlb true for .zip after WLB guard ( .wlb already handled above), so branch is effectively zip-only
+          final isZip = sharedExt == '.zip';
+          if (isZipOrWlb && isZip) {
             final tempDir = await getTemporaryDirectory();
             tempDirPath = p.join(
               tempDir.path,
@@ -275,15 +303,30 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   Future<void> _pickAndImportFile() async {
     bool isDialogShown = false;
+    String? tempDirPath;
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['txt', 'zip', 'json'],
+        allowedExtensions: ['txt', 'zip', 'json', 'wlb'],
       );
 
       if (result == null || result.files.single.path == null) return;
 
       final path = result.files.single.path!;
+      final lower = path.toLowerCase();
+      final ext = p.extension(lower);
+      // WLB misroute guard: .wlb or .zip containing warloc_chats.db must go to backup restore
+      if (lower.endsWith('.wlb') || (ext == '.zip' && await _isWlbArchive(path))) {
+        debugPrint('[Warloc] picked file detected as WLB backup: $path');
+        if (!mounted) return;
+        await BackupService.importBackupWithPath(
+          context,
+          path,
+          onRestoreSuccess: _loadThreads,
+        );
+        return;
+      }
+
       final isZip = path.toLowerCase().endsWith('.zip');
 
       if (!mounted) return;
@@ -296,7 +339,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
       isDialogShown = true;
 
       String? targetPathToParse;
-      String? tempDirPath;
 
       if (isZip) {
         final tempDir = await getTemporaryDirectory();
@@ -435,6 +477,16 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   Future<void> _importBackup() =>
       BackupService.importBackup(context, onRestoreSuccess: _loadThreads);
+
+  Future<bool> _isWlbArchive(String path) async {
+    try {
+      final bytes = await File(path).readAsBytes();
+      final archive = ZipDecoder().decodeBytes(bytes);
+      return archive.any((e) => e.name == 'warloc_chats.db');
+    } catch (_) {
+      return false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

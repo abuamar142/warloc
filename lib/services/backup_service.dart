@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
@@ -40,7 +41,23 @@ class BackupService {
       final tempPath = p.join(tempDir.path, 'warloc_backup_${DateTime.now().millisecondsSinceEpoch}.wlb');
       await BackupHelper.createBackup(tempPath);
 
-      final backupBytes = await File(tempPath).readAsBytes();
+      final f = File(tempPath);
+      if (!await f.exists() || await f.length() == 0) {
+        debugPrint('File cadangan kosong: $tempPath tidak ada atau 0 byte');
+        if (context.mounted) {
+          showErrorSnackBar(context, 'File cadangan kosong');
+        }
+        throw Exception('File cadangan kosong');
+      }
+      final tempSize = await f.length();
+      if (tempSize < 100) {
+        debugPrint('File cadangan terlalu kecil: $tempSize byte');
+        if (context.mounted) {
+          showErrorSnackBar(context, 'File cadangan rusak (terlalu kecil)');
+        }
+        throw Exception('Backup terlalu kecil');
+      }
+      debugPrint('Backup temp created: $tempPath size=$tempSize');
 
       // Close loading dialog before opening native save dialog
       if (context.mounted && isDialogShown) {
@@ -48,26 +65,60 @@ class BackupService {
         isDialogShown = false;
       }
 
-      // 3. Prompt user to select save destination and write bytes natively
+      // 3. Prompt user to select save destination — avoid loading full file into RAM.
+      // Previous code used `bytes: backupBytes` (readAsBytes 703 MB → OOM over MethodChannel).
+      // Now we get outputPath first, then stream-copy temp file to destination.
       final outputPath = await FilePicker.saveFile(
         dialogTitle: 'Simpan Cadangan Warloc',
         fileName: 'warloc_backup_${DateTime.now().millisecondsSinceEpoch}.wlb',
         type: FileType.custom,
         allowedExtensions: ['wlb', 'zip'],
-        bytes: backupBytes,
       );
+
+      if (outputPath == null) {
+        // User cancelled — cleanup temp
+        try {
+          if (await f.exists()) await f.delete();
+        } catch (_) {}
+        return;
+      }
+
+      // Stream-copy temp file to user-chosen path (avoids 703 MB heap allocation)
+      try {
+        final outFile = File(outputPath);
+        // If saveFile returned a content:// URI, File API will fail — fallback to bytes is not viable for huge files.
+        // For now handle filesystem path; for content URI, log and show error to guide user to pick Downloads.
+        if (outputPath.startsWith('content://')) {
+          debugPrint('Output is content URI, attempting fallback via bytes (may OOM for huge files)');
+          // Fallback: try streaming via openRead/openWrite if underlying file is accessible via FileUtils path
+          // If still content URI, we cannot handle 703 MB without OOM — show guidance
+          throw Exception('Penyimpanan content:// belum didukung untuk file besar. Pilih folder Download/internal storage.');
+        }
+        await f.copy(outputPath);
+        // Verify copy
+        final outLen = await outFile.length();
+        debugPrint('Backup copied to $outputPath size=$outLen');
+        if (outLen != tempSize) {
+          debugPrint('Warning: copied size mismatch temp=$tempSize out=$outLen');
+        }
+      } catch (e) {
+        debugPrint('Gagal menyalin backup ke $outputPath: $e');
+        if (context.mounted) {
+          showErrorSnackBar(context, 'Gagal menyimpan cadangan: $e');
+        }
+        // Keep temp for retry? cleanup anyway
+        try {
+          if (await f.exists()) await f.delete();
+        } catch (_) {}
+        return;
+      }
 
       // Clean up temporary file
       try {
-        final tempFile = File(tempPath);
-        if (await tempFile.exists()) {
-          await tempFile.delete();
-        }
+        if (await f.exists()) await f.delete();
       } catch (e) {
         debugPrint("Gagal membersihkan file cadangan sementara: $e");
       }
-
-      if (outputPath == null) return; // User cancelled
 
       if (context.mounted) {
         showSuccessSnackBar(context, "Cadangan data berhasil diekspor!");
@@ -92,15 +143,59 @@ class BackupService {
     BuildContext context, {
     required VoidCallback onRestoreSuccess,
   }) async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['wlb', 'zip'],
+    );
+
+    if (result == null || result.files.single.path == null) return;
+    if (!context.mounted) return;
+    final backupPath = result.files.single.path!;
+    await importBackupWithPath(
+      context,
+      backupPath,
+      onRestoreSuccess: onRestoreSuccess,
+    );
+  }
+
+  /// Restores a backup from an already-known file [backupPath] (e.g. from
+  /// file picker or share intent) without re-prompting for a file. Validates
+  /// that the archive contains `warloc_chats.db`, asks for merge/overwrite,
+  /// and delegates to [BackupHelper].
+  static Future<void> importBackupWithPath(
+    BuildContext context,
+    String backupPath, {
+    required VoidCallback onRestoreSuccess,
+  }) async {
     bool isDialogShown = false;
     try {
-      final result = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['wlb', 'zip'],
-      );
 
-      if (result == null || result.files.single.path == null) return;
-      final backupPath = result.files.single.path!;
+      // --- Validasi file backup sebelum menampilkan dialog mode ---
+      final file = File(backupPath);
+      if (!await file.exists() || await file.length() == 0) {
+        if (context.mounted) {
+          showErrorSnackBar(context, 'File kosong (0 byte)');
+        }
+        return;
+      }
+      Archive archive;
+      try {
+        final bytes = await file.readAsBytes();
+        archive = ZipDecoder().decodeBytes(bytes);
+      } catch (e) {
+        debugPrint('File bukan zip/wlb valid: $e');
+        if (context.mounted) {
+          showErrorSnackBar(context, 'File bukan zip/wlb valid');
+        }
+        return;
+      }
+      final hasDb = archive.any((e) => e.name == 'warloc_chats.db');
+      if (!hasDb) {
+        if (context.mounted) {
+          showErrorSnackBar(context, 'Backup tidak mengandung warloc_chats.db — bukan file .wlb valid');
+        }
+        return;
+      }
 
       if (!context.mounted) return;
 
@@ -196,9 +291,8 @@ class BackupService {
 
       if (success) {
         onRestoreSuccess();
-        if (context.mounted) {
-          showSuccessSnackBar(context, "Cadangan data berhasil dipulihkan!");
-        }
+        if (!context.mounted) return;
+        showSuccessSnackBar(context, "Cadangan data berhasil dipulihkan!");
       } else {
         if (!context.mounted) return;
         showErrorSnackBar(context, "Gagal memulihkan cadangan. Pastikan format file cadangan valid.");

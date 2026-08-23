@@ -13,6 +13,9 @@ class BackupHelper {
     final dbPath = p.join(await getDatabasesPath(), DatabaseHelper.dbName);
     final appDir = await getApplicationDocumentsDirectory();
 
+    final db = await DatabaseHelper.instance.database;
+    await db.rawQuery('PRAGMA wal_checkpoint(TRUNCATE)');
+
     await compute(_createBackupIsolate, (
       dbPath: dbPath,
       appDirPath: appDir.path,
@@ -26,10 +29,11 @@ class BackupHelper {
 
     // 1. Add database file
     final dbFile = File(params.dbPath);
-    if (dbFile.existsSync()) {
-      final dbBytes = dbFile.readAsBytesSync();
-      archive.addFile(ArchiveFile('warloc_chats.db', dbBytes.length, dbBytes));
+    if (!dbFile.existsSync()) {
+      throw Exception('Database tidak ditemukan: ${params.dbPath}');
     }
+    final dbBytes = dbFile.readAsBytesSync();
+    archive.addFile(ArchiveFile('warloc_chats.db', dbBytes.length, dbBytes));
 
     // 2. Add media folder recursively
     final mediaDir = Directory(p.join(params.appDirPath, 'media'));
@@ -45,6 +49,9 @@ class BackupHelper {
     }
 
     final zipBytes = encoder.encode(archive);
+    if (zipBytes.length < 100) {
+      throw Exception('Backup kosong atau rusak — archive terlalu kecil');
+    }
     final outFile = File(params.outputPath);
     outFile.createSync(recursive: true);
     outFile.writeAsBytesSync(zipBytes);
