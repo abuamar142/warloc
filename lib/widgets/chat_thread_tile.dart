@@ -10,7 +10,7 @@ class ChatThreadTile extends StatelessWidget {
   final ChatMessage? lastMessage;
   final int messageCount;
   final VoidCallback onTap;
-  final VoidCallback onDelete;
+  final VoidCallback? onLongPress;
 
   const ChatThreadTile({
     super.key,
@@ -18,7 +18,7 @@ class ChatThreadTile extends StatelessWidget {
     required this.lastMessage,
     required this.messageCount,
     required this.onTap,
-    required this.onDelete,
+    this.onLongPress,
   });
 
   String _formatMessageTime(int? timestamp) {
@@ -94,44 +94,27 @@ class ChatThreadTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? theme.colorScheme.primary.withValues(alpha: 0.15)
-                          : theme.colorScheme.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      "$messageCount pesan",
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? theme.colorScheme.primary.withValues(alpha: 0.15)
+                      : theme.colorScheme.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  "$messageCount pesan",
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
                   ),
-                  const SizedBox(width: 12),
-                  InkWell(
-                    onTap: onDelete,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.all(4.0),
-                      child: Icon(
-                        Icons.delete_outline_rounded,
-                        color: Colors.redAccent.withValues(alpha: 0.7),
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ],
           ),
           onTap: onTap,
+          onLongPress: onLongPress,
         ),
       ),
     );

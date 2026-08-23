@@ -156,6 +156,16 @@ class DatabaseHelper {
     );
   }
 
+  Future<int> updateThreadName(int id, String newName) async {
+    final db = await instance.database;
+    return await db.update(
+      'threads',
+      {'name': newName},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   Future<int> deleteThread(int id) async {
     final db = await instance.database;
     return await db.delete(

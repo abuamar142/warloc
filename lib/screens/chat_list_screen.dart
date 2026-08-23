@@ -25,9 +25,13 @@ import 'package:warloc/core/widgets/atoms/loading_indicator.dart';
 import 'package:warloc/core/widgets/molecules/empty_state_widget.dart';
 import 'package:warloc/core/widgets/molecules/app_dialog.dart';
 import 'package:warloc/core/widgets/atoms/app_button.dart';
+import 'package:warloc/core/widgets/atoms/app_text_field.dart';
 import 'package:warloc/screens/chat_room_screen.dart';
+import 'package:warloc/screens/chat_media_screen.dart';
 import 'package:warloc/screens/security_settings_screen.dart';
 import 'package:warloc/core/widgets/molecules/custom_app_bar.dart';
+import 'package:warloc/widgets/thread_options_sheet.dart';
+import 'package:warloc/widgets/hard_delete_dialog.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -442,34 +446,146 @@ class _ChatListScreenState extends State<ChatListScreen> {
     );
   }
 
-  Future<void> _deleteThread(ChatThread thread) async {
-    final confirmed = await showDialog<bool>(
+  Future<void> _showThreadOptions(ChatThread thread) async {
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
       context: context,
-      builder: (context) => AppDialog(
-        title: "Hapus Chat",
-        content: Text(
-          "Apakah Anda yakin ingin menghapus semua riwayat chat dengan \"${thread.name}\"?",
+      isScrollControlled: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => ThreadOptionsSheet(
+        thread: thread,
+        onRename: () => _showRenameDialog(thread),
+        onViewMedia: () => _openMediaScreen(thread),
+        onDelete: () => _handleHardDelete(thread),
+      ),
+    );
+  }
+
+  Future<void> _showRenameDialog(ChatThread thread) async {
+    if (thread.id == null) return;
+    final controller = TextEditingController(text: thread.name);
+    final formKey = GlobalKey<FormState>();
+
+    final String? confirmedName = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AppDialog(
+        title: 'Ganti Nama',
+        content: Form(
+          key: formKey,
+          child: AppTextField(
+            controller: controller,
+            hintText: 'Masukkan nama baru',
+            validator: (val) {
+              if (val == null || val.trim().isEmpty) {
+                return 'Nama tidak boleh kosong';
+              }
+              return null;
+            },
+          ),
         ),
         actions: [
           AppButton(
-            label: "Batal",
-            onPressed: () => Navigator.pop(context, false),
+            label: 'Batal',
+            onPressed: () => Navigator.pop(dialogContext),
             variant: AppButtonVariant.secondary,
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("Hapus", style: TextStyle(color: Colors.red)),
+          AppButton(
+            label: 'Simpan',
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.pop(dialogContext, controller.text.trim());
+              }
+            },
           ),
         ],
       ),
     );
 
-    if (confirmed == true && thread.id != null) {
-      await DatabaseHelper.instance.deleteThread(thread.id!);
-      _loadThreads();
-      if (mounted) {
-        showInfoSnackBar(context, "Chat \"${thread.name}\" berhasil dihapus");
+    controller.dispose();
+
+    if (confirmedName == null || confirmedName.isEmpty) return;
+    if (confirmedName == thread.name) return;
+
+    try {
+      await DatabaseHelper.instance.updateThreadName(thread.id!, confirmedName);
+      await _loadThreads();
+      if (!mounted) return;
+      showSuccessSnackBar(context, 'Nama berhasil diubah menjadi "$confirmedName"');
+    } catch (e) {
+      if (!mounted) return;
+      showErrorSnackBar(context, 'Gagal mengubah nama: $e');
+    }
+  }
+
+  Future<void> _openMediaScreen(ChatThread thread) async {
+    if (thread.id == null) return;
+    try {
+      final docsDir = await getApplicationDocumentsDirectory();
+      final mediaDirPath = p.join(docsDir.path, 'media', thread.id.toString());
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatMediaScreen(
+            thread: thread,
+            mediaDirPath: mediaDirPath,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showErrorSnackBar(context, 'Gagal membuka media: $e');
+    }
+  }
+
+  Future<void> _handleHardDelete(ChatThread thread) async {
+    if (thread.id == null) return;
+    final messageCount = _messageCounts[thread.id] ?? 0;
+    int mediaCount = 0;
+    try {
+      final mediaMessages = await DatabaseHelper.instance.getMediaMessagesForThread(thread.id!);
+      final seen = <String>{};
+      for (final m in mediaMessages) {
+        if (m.mediaPath != null && m.mediaPath!.isNotEmpty) {
+          seen.add(m.mediaPath!);
+        }
       }
+      mediaCount = seen.length;
+    } catch (_) {}
+
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => HardDeleteConfirmDialog(
+        threadName: thread.name,
+        messageCount: messageCount,
+        mediaCount: mediaCount,
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await DatabaseHelper.instance.deleteThread(thread.id!);
+      try {
+        final docsDir = await getApplicationDocumentsDirectory();
+        final mediaDir = Directory(p.join(docsDir.path, 'media', thread.id.toString()));
+        if (await mediaDir.exists()) {
+          await mediaDir.delete(recursive: true);
+        }
+      } catch (_) {
+        // do not fail if missing
+      }
+      await _loadThreads();
+      if (!mounted) return;
+      showSuccessSnackBar(context, 'Chat "${thread.name}" berhasil dihapus');
+    } catch (e) {
+      if (!mounted) return;
+      showErrorSnackBar(context, 'Gagal menghapus chat: $e');
     }
   }
 
@@ -594,7 +710,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                   ),
                                 ).then((_) => _loadThreads());
                               },
-                              onDelete: () => _deleteThread(thread),
+                              onLongPress: () => _showThreadOptions(thread),
                             );
                           },
                         ),
